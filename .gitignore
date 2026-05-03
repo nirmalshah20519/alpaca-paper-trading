@@ -56,3 +56,6 @@ Thumbs.db
 
 # Docker/local override files
 docker-compose.override.yml
+
+# Plan Markdown
+improved_plan.md
