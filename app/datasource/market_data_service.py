@@ -46,8 +46,21 @@ class AlpacaMarketDataService(BaseMarketDataService):
         # Detect slash or common unslashed crypto symbols returned by Alpaca positions
         return "/" in symbol or any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC"])
 
+    def _normalize_symbol(self, symbol: str) -> str:
+        """Injects slash into crypto symbols if missing (e.g. BTCUSD -> BTC/USD)."""
+        if "/" in symbol:
+            return symbol
+        if any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC"]):
+            # Split USD or USDT from the end
+            if symbol.endswith("USDT"):
+                return f"{symbol[:-4]}/USDT"
+            if symbol.endswith("USD"):
+                return f"{symbol[:-3]}/USD"
+        return symbol
+
     def get_latest_price(self, symbol: str) -> float | None:
         try:
+            symbol = self._normalize_symbol(symbol)
             if self._is_crypto(symbol):
                 req = CryptoLatestTradeRequest(symbol_or_symbols=symbol)
                 res = self._crypto_client.get_crypto_latest_trade(req)
@@ -68,6 +81,7 @@ class AlpacaMarketDataService(BaseMarketDataService):
 
     def get_latest_quote(self, symbol: str) -> dict:
         try:
+            symbol = self._normalize_symbol(symbol)
             if self._is_crypto(symbol):
                 req = CryptoLatestQuoteRequest(symbol_or_symbols=symbol)
                 res = self._crypto_client.get_crypto_latest_quote(req)
@@ -88,6 +102,7 @@ class AlpacaMarketDataService(BaseMarketDataService):
 
     def get_bars(self, symbol: str, timeframe: str = BARS_TIMEFRAME, limit: int = BARS_LOOKBACK) -> pd.DataFrame:
         try:
+            symbol = self._normalize_symbol(symbol)
             tf = self._parse_timeframe(timeframe)
             start = datetime.now(tz=timezone.utc) - timedelta(days=5)
             
