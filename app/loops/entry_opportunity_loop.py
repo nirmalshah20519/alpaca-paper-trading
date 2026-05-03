@@ -128,14 +128,25 @@ class EntryOpportunityLoop(BaseLoop):
                     self._executor.storage.record_signal(str(utc_now()), "ENTRY", symbol, signal, None)
                 return
 
-            # 4. Risk Management: Capital Sizing
-            latest_price = analysis.get("latest_price", 0)
-            if latest_price > 0:
-                calculated_qty = int(MAX_DOLLAR_PER_TRADE // latest_price)
-                if calculated_qty < 1:
-                    logger.warning("[EntryOpportunityLoop] Calculated qty for {} is 0 (Price={}). Skipping.", symbol, latest_price)
+            # 4. Risk Management: Capital Sizing (Support Fractional)
+            # Use entry_price from analysis or latest_price from market_data
+            calc_price = analysis.get("entry_price") or market_data.get("latest_price", 0)
+            
+            if calc_price > 0:
+                # For Crypto, we use 4 decimal places. For Stocks, Alpaca usually wants integers (or limited fractions).
+                is_crypto = "/" in symbol
+                raw_qty = MAX_DOLLAR_PER_TRADE / calc_price
+                
+                if is_crypto:
+                    calculated_qty = round(raw_qty, 4)
+                else:
+                    calculated_qty = int(raw_qty) # Stocks default to whole shares for safety
+                
+                if calculated_qty <= 0:
+                    logger.warning("[EntryOpportunityLoop] Calculated qty for {} is 0 (Price={}). Skipping.", symbol, calc_price)
                     return
-                if signal.qty != calculated_qty:
+                
+                if abs(signal.qty - calculated_qty) > 0.00001:
                     logger.info("[EntryOpportunityLoop] Overriding LLM qty ({}) with Risk-Managed qty ({}) for {}.", signal.qty, calculated_qty, symbol)
                     signal.qty = calculated_qty
 

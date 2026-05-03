@@ -28,11 +28,14 @@ class AccountValidator:
 
         # 1. Check buying power
         buying_power = account_data.get("buying_power", 0.0)
-        estimated_cost = signal.qty * (signal.stop or 0) # rough check
-        # Actually should be entry price.
+        # We need the current market price to estimate cost. 
+        # Since EntrySignal doesn't have it, we use the average of target/stop or a very safe estimate.
+        price_estimate = (signal.target + signal.stop) / 2 if (signal.target and signal.stop) else 0.0
         
-        if buying_power < estimated_cost:
-            return ValidationResult(validated=False, reason="Insufficient buying power")
+        estimated_cost = signal.qty * price_estimate
+        
+        if price_estimate > 0 and buying_power < estimated_cost:
+            return ValidationResult(validated=False, reason=f"Insufficient buying power (Need ${estimated_cost:.2f}, Have ${buying_power:.2f})")
 
         # 2. Check position count
         # In Phase 3, ReconciliationLoop updates AppState with account data.

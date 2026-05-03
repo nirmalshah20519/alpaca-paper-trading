@@ -43,7 +43,7 @@ class AlpacaOrderSubmitter:
             
             order_req = MarketOrderRequest(
                 symbol=signal.sym,
-                qty=signal.qty,
+                qty=float(signal.qty),
                 side=side,
                 time_in_force=tif
             )

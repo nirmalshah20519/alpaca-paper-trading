@@ -28,7 +28,7 @@ class EntrySignal(BaseModel):
     sym: str
     action: Literal["BUY", "SELL", "SKIP"]
     conf: float = Field(ge=0.0, le=1.0)
-    qty: int = Field(ge=0)
+    qty: float = Field(ge=0.0)
     target: Optional[float] = None
     stop: Optional[float] = None
     reason_code: str
@@ -72,7 +72,7 @@ class ExecutionResult(BaseModel):
     client_order_id: str
     symbol: str
     side: str
-    qty: int
+    qty: float
     submitted_at: str
     status: str  # e.g. "submitted", "filled", "failed"
     target_price: Optional[float] = None
