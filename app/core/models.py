@@ -75,4 +75,6 @@ class ExecutionResult(BaseModel):
     qty: int
     submitted_at: str
     status: str  # e.g. "submitted", "filled", "failed"
+    target_price: Optional[float] = None
+    stop_loss_price: Optional[float] = None
     error: Optional[str] = None

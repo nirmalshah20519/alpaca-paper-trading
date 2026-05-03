@@ -103,12 +103,27 @@ def main() -> None:
         )
         logger.info("Datasource and Logic services initialised.")
 
+        # Sync Open Orders from Alpaca
+        try:
+            from alpaca.trading.requests import GetOrdersRequest
+            from alpaca.trading.enums import QueryOrderStatus
+            
+            logger.info("Syncing open orders with Alpaca API...")
+            req = GetOrdersRequest(status=QueryOrderStatus.OPEN)
+            open_orders_list = services.gateway.trading_client.get_orders(filter=req)
+            storage_manager.sync_open_orders(open_orders_list)
+            
+            # Update AppState as well
+            app_state.set_open_orders([str(o.id) for o in open_orders_list])
+        except Exception as e:
+            logger.warning("Initial open order sync failed: {}", e)
+
         # 7. Initialise Thread Manager with injected services
         thread_manager = ThreadManager(app_state, services)
 
         # 8. Start Dashboard Server (Background Thread)
         from app.dashboard.server import run_server
-        run_server(storage_manager, app_state, port=8000)
+        run_server(storage_manager, app_state, services.market_data_service, port=8000)
 
         # 9. Setup signal handling for graceful shutdown
         def handle_exit(signum, frame):

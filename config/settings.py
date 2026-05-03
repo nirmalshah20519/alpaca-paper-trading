@@ -24,6 +24,10 @@ DEFAULT_CRYPTO_UNIVERSE: list[str] = [
 MAX_ACTIVE_SYMBOLS: int = 20
 ASSET_SELECTOR_TOP_N: int = 20
 
+# Risk Management
+MAX_DOLLAR_PER_TRADE: float = 200.0
+STOCK_CLOSE_BUFFER_MINUTES: int = 15
+
 # ---------------------------------------------------------------------------
 # Loop Intervals (seconds)
 # ---------------------------------------------------------------------------

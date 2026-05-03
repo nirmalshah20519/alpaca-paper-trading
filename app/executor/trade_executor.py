@@ -51,7 +51,9 @@ class TradeExecutor:
                 side=signal.action,
                 qty=signal.qty,
                 submitted_at=str(utc_now()),
-                status="submitted"
+                status="submitted",
+                target_price=signal.target,
+                stop_loss_price=signal.stop
             )
             
             # Record to past_orders.csv or open_orders.csv

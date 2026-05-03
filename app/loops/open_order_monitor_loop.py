@@ -56,13 +56,41 @@ class OpenOrderMonitorLoop(BaseLoop):
             return
 
         try:
-            # 1. Update Open Orders in AppState
+            # 1. Update Open Orders in AppState & Reap Stale Orders
             open_orders = self._account_service.get_open_orders()
-            order_ids = [order["id"] for order in open_orders]
+            order_ids = []
+            
+            from datetime import datetime, timezone, timedelta
+            now = datetime.now(timezone.utc)
+            stale_threshold = timedelta(minutes=5)
+
+            for order in open_orders:
+                order_id = order["id"]
+                status = order["status"]
+                
+                # Check for stale orders (submitted but not filled for 5+ mins)
+                if status in ["new", "accepted", "submitted", "partially_filled"]:
+                    sub_at_str = order.get("submitted_at")
+                    if sub_at_str:
+                        # Parse '2026-05-03 09:34:09.840540+00:00'
+                        try:
+                            # Alpaca timestamps can be tricky, simple ISO parse
+                            from dateutil import parser
+                            sub_at = parser.parse(sub_at_str)
+                            if (now - sub_at) > stale_threshold:
+                                logger.warning("[OpenOrderMonitorLoop] Order {} is STALE ({}). Cancelling...", order_id, sub_at_str)
+                                if self._executor:
+                                    self._executor.submitter.cancel_order(order_id)
+                                continue # Don't add to active order_ids
+                        except Exception as e:
+                            logger.error("Failed to parse order timestamp {}: {}", sub_at_str, e)
+
+                order_ids.append(order_id)
+            
             self.app_state.set_open_orders(order_ids)
             
-            if open_orders:
-                logger.info("[OpenOrderMonitorLoop] {} open orders active.", len(open_orders))
+            if order_ids:
+                logger.info("[OpenOrderMonitorLoop] {} open orders active.", len(order_ids))
 
             # 2. Manage Position Exits
             positions = self._account_service.get_positions()

@@ -40,9 +40,12 @@ class AppState:
         self._active_assets: list[str] = []
         self._last_asset_refresh_utc: Optional[str] = None
         self._pause_new_entries: bool = False
+        self._recently_analyzed: set[str] = set()
+        self._last_analysis_data: dict[str, dict] = {} # symbol -> {price, time}
         
         # Phase 3+: Account snapshot & open orders from Alpaca
         self._account_data: dict[str, Any] = {}
+        self._positions: list[dict[str, Any]] = []
         self._open_order_ids: list[str] = []
 
         # ----------------------------------------------------------------
@@ -54,6 +57,50 @@ class AppState:
         # Service metadata
         # ----------------------------------------------------------------
         self.service_start_utc: str = utc_now()
+
+    # ------------------------------------------------------------------
+    # Analysis Throttle
+    # ------------------------------------------------------------------
+
+    def should_analyze(self, symbol: str, current_price: float, threshold: float = 0.002, max_age_mins: int = 30) -> bool:
+        """
+        Returns True if the symbol should be analyzed by the LLM.
+        Criteria: Price move > threshold OR age > max_age_mins.
+        """
+        from datetime import datetime, timezone
+        with self.asset_list_lock:
+            data = self._last_analysis_data.get(symbol)
+            if not data:
+                return True
+            
+            last_price = data["price"]
+            last_time = data["time"]
+            
+            # 1. Check price move
+            price_move = abs(current_price - last_price) / last_price if last_price > 0 else 1.0
+            if price_move >= threshold:
+                return True
+            
+            # 2. Check time age
+            age_mins = (datetime.now(timezone.utc) - last_time).total_seconds() / 60
+            if age_mins >= max_age_mins:
+                return True
+                
+            return False
+
+    def mark_analyzed(self, symbol: str, price: float) -> None:
+        from datetime import datetime, timezone
+        with self.asset_list_lock:
+            self._recently_analyzed.add(symbol)
+            self._last_analysis_data[symbol] = {
+                "price": price,
+                "time": datetime.now(timezone.utc)
+            }
+
+    def clear_analysis_cache(self) -> None:
+        with self.asset_list_lock:
+            self._recently_analyzed.clear()
+            self._last_analysis_data.clear()
 
     # ------------------------------------------------------------------
     # Active Assets
@@ -97,6 +144,18 @@ class AppState:
     def set_account_data(self, data: dict[str, Any]) -> None:
         with self.account_lock:
             self._account_data = dict(data)
+
+    # ------------------------------------------------------------------
+    # Positions
+    # ------------------------------------------------------------------
+
+    def get_positions(self) -> list[dict[str, Any]]:
+        with self.account_lock:
+            return list(self._positions if hasattr(self, "_positions") else [])
+
+    def set_positions(self, positions: list[dict[str, Any]]) -> None:
+        with self.account_lock:
+            self._positions = list(positions)
 
     # ------------------------------------------------------------------
     # Open Orders

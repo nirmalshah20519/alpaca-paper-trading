@@ -62,8 +62,16 @@ class BaseAccountService(ABC):
         """Return all open Alpaca orders as a list of dicts."""
 
     @abstractmethod
+    def get_raw_open_orders(self) -> list[Any]:
+        """Return raw Alpaca order objects."""
+
+    @abstractmethod
     def get_position(self, symbol: str) -> Optional[dict]:
         """Return position dict for *symbol*, or None if not held."""
+
+    @abstractmethod
+    def is_market_closing_soon(self, buffer_minutes: int = 15) -> bool:
+        """Return True if US equity market is closing within buffer_minutes."""
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +105,8 @@ class AlpacaAccountService(BaseAccountService):
                 "cash": cash,
                 "buying_power": buying_power,
                 "portfolio_value": portfolio_value,
+                "day_pnl": safe_float(getattr(account, "equity_change", 0.0), 0.0),
+                "day_pnl_pct": safe_float(getattr(account, "equity_change_percent", 0.0), 0.0),
                 "trading_blocked": bool(account.trading_blocked),
                 "account_blocked": bool(account.account_blocked),
                 "status": str(account.status.value) if hasattr(account.status, "value") else str(account.status),
@@ -147,12 +157,41 @@ class AlpacaAccountService(BaseAccountService):
             logger.error("get_open_orders failed: {}", exc)
             return []
 
+    def get_raw_open_orders(self) -> list[Any]:
+        try:
+            return self._fetch_open_orders()
+        except Exception as exc:
+            logger.error("get_raw_open_orders failed: {}", exc)
+            return []
+
     def get_position(self, symbol: str) -> Optional[dict]:
         positions = self.get_positions()
         for pos in positions:
             if pos.get("symbol") == symbol:
                 return pos
         return None
+
+    def is_market_closing_soon(self, buffer_minutes: int = 15) -> bool:
+        """
+        Check Alpaca Clock to see if next_close is within buffer_minutes.
+        Returns False if error or if it's currently crypto time (market closed).
+        """
+        try:
+            clock = self._client.get_clock()
+            if not clock.is_open:
+                return False  # Already closed
+            
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            time_until_close = clock.next_close - now
+            
+            is_soon = time_until_close.total_seconds() < (buffer_minutes * 60)
+            if is_soon:
+                logger.warning("Market is closing in {} seconds. Buffer triggered.", int(time_until_close.total_seconds()))
+            return is_soon
+        except Exception as exc:
+            logger.error("is_market_closing_soon failed: {}", exc)
+            return False
 
     # ------------------------------------------------------------------
     # Retried internal helpers

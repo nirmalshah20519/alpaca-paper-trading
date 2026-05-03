@@ -76,3 +76,15 @@ class AlpacaOrderSubmitter:
         except Exception as exc:
             logger.error("Alpaca exit submission failed for {}: {}", symbol, exc)
             raise
+
+    def cancel_order(self, order_id: str) -> bool:
+        """
+        Cancel an order by ID. Returns True if successful.
+        """
+        try:
+            self.client.cancel_order_by_id(order_id)
+            logger.info("Cancelled stale order: {}", order_id)
+            return True
+        except Exception as exc:
+            logger.error("Failed to cancel order {}: {}", order_id, exc)
+            return False

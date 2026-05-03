@@ -63,6 +63,7 @@ class AssetRefreshLoop(BaseLoop):
             return
 
         self.app_state.set_active_assets(new_assets)
+        self.app_state.clear_analysis_cache()
         logger.info(
             "[AssetRefreshLoop] asset_refresh_completed — {} symbols loaded. selector={}",
             len(new_assets),

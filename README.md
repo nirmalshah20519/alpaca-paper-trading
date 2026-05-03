@@ -1,82 +1,48 @@
-# Alpaca Trading System
+# Alpaca Paper Trading System (24/7 Crypto + Stocks)
 
-An object-oriented, thread-safe trading service that uses **Alpaca** for market data and trade execution, with an **LLM (GPT-4o-mini)** constrained decision layer.
+A professional-grade, autonomous trading system that uses AI (OpenAI) and technical analysis to trade a dynamic universe of US Stocks and Crypto.
 
-## 🚀 Overview
+## 🚀 Key Features
+- **24/7/365 Crypto Trading**: Seamlessly switches to Crypto-only when US markets are closed.
+- **AI-Driven Decisions**: Uses GPT-4o-mini to analyze technical indicators and sentiment.
+- **Dynamic Asset Universe**: Automatically scores and selects the top 20 most volatile/liquid assets every hour.
+- **Real-Time Dashboard**: Premium web UI (FastAPI) showing live positions, signals, and account equity with 1s updates.
+- **Professional Risk Management**:
+  - **Dollar-Based Sizing**: Default $200 per trade (automatically calculates quantity).
+  - **Market Close Buffer**: Stops stock entries 15 minutes before US market close.
+  - **Deep Reconciliation**: Automatically syncs local state with Alpaca exchange state every 10 mins.
 
-The system is designed for **Paper Trading** by default, ensuring safety and predictability. It follows a "Deterministic First, LLM Second" philosophy:
-1.  **Deterministic Calculators**: All indicators, risk metrics, and position sizes are calculated using standard libraries (Pandas/NumPy).
-2.  **Constrained Decision Layer**: The LLM only receives compact summaries of these metrics to make a final action choice (BUY, SELL, or SKIP).
-3.  **Safety Gate**: Every signal is validated against account limits and risk parameters before submission.
+## 🛠 Setup & Installation
 
-## 🏗️ Architecture
+1. **Clone the repository**
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Configure Environment**:
+   Create a `.env` file in the root:
+   ```env
+   ALPACA_API_KEY=your_key
+   ALPACA_SECRET_KEY=your_secret
+   OPENAI_API_KEY=your_openai_key
+   TRADING_MODE=PAPER
+   ```
 
-The system runs 5 independent background loops:
-*   **AssetRefreshLoop**: Scores the universe and selects the top-20 most liquid/volatile symbols every hour.
-*   **EntryOpportunityLoop**: Scans active symbols for entry signals every 2 minutes.
-*   **OpenOrderMonitorLoop**: Monitors open orders and manages exits (Profit Target / Stop Loss) every 2 minutes.
-*   **ReconciliationLoop**: Syncs local CSV state with Alpaca broker reality every 10 minutes.
-*   **HeartbeatLoop**: Logs service health every minute.
+## 📈 Running the System
 
-## ⚙️ Configuration
-
-### 1. Environment Variables (`.env`)
-Only 4 variables are allowed, adhering to strict security constraints:
-```env
-ALPACA_API_KEY=your_alpaca_key
-ALPACA_API_SECRET=your_alpaca_secret
-OPENAI_API_KEY=your_openai_key
-TRADING_MODE=PAPER
+Start the main service:
+```bash
+python main.py
 ```
-*Note: `TRADING_MODE` must be either `PAPER` or `REAL`.*
+Access the dashboard:
+[http://localhost:8000](http://localhost:8000)
 
-### 2. Strategy & Risk Limits
-All strategy-specific parameters are version-controlled in the `config/` directory:
-*   `config/risk_limits.py`: Max risk per trade, max exposure, drawdown limits.
-*   `config/strategy_params.py`: Indicator periods, ATR multipliers for SL/TP.
-*   `config/settings.py`: Loop intervals, stock universe, and storage paths.
+## 📁 Project Structure
+- `/app/loops`: Autonomous threads for entry, monitoring, and reconciliation.
+- `/app/llm`: OpenAI integration and prompt engineering.
+- `/app/dashboard`: FastAPI server and HTML interface.
+- `/data`: CSV logs for signals and order history.
+- `/config`: Strategy parameters and risk limits.
 
-## 📁 Storage
-All trade activity is recorded in local CSV files under the `data/` directory:
-*   `open_orders.csv`: Currently active positions.
-*   `past_orders.csv`: Completed trades history.
-*   `signal_logs.csv`: Every LLM decision and validation result.
-
-## 🛠️ Installation & Running
-
-1.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2.  **Configure `.env`**:
-    Copy the example and add your keys.
-
-3.  **Run Tests**:
-    ```bash
-    pytest tests/ -v
-    ```
-
-4.  **Start the Service**:
-    ```bash
-    python main.py
-    ```
-
-5.  **Access the Dashboard**:
-    Open [http://localhost:8000](http://localhost:8000) in your browser to view live status and signal history.
-
-## 📊 Dashboard
-The system includes a premium, glassmorphism-style dashboard that provides:
-*   **Live Portfolio Stats**: Equity, buying power, and open orders.
-*   **Signal History**: Real-time view of LLM decisions and validator results.
-*   **Active Assets**: Current symbols being monitored by the entry scanner.
-*   **System Health**: Uptime and pause/reconcile status.
-The system includes 45+ unit and integration tests covering:
-*   Thread-safe state management (`AppState`).
-*   Atomic CSV operations with file locking.
-*   Alpaca API interaction mocking.
-*   Technical indicator accuracy.
-*   Full trade pipeline integration.
-
-## ⚠️ Safety Warning
-This system defaults to **PAPER** mode. Real trading involves significant risk. Always verify performance in a paper environment for an extended period before switching to `REAL` mode.
+## ⚠️ Disclaimer
+This software is for educational purposes. Always test thoroughly in PAPER mode before using real capital. The authors are not responsible for any financial losses.

@@ -57,6 +57,7 @@ class ReconciliationLoop(BaseLoop):
 
             # 2. Update AppState
             self.app_state.set_account_data(account)
+            self.app_state.set_positions(positions)
 
             # 3. Check for account-level blocks
             if account.get("trading_blocked") or account.get("account_blocked"):
@@ -64,14 +65,13 @@ class ReconciliationLoop(BaseLoop):
                 self.app_state.set_paused(True)
                 return
 
-            # 4. Compare position count with local open_orders.csv
+            # 4. Sync open orders with CSV (Deep Reconciliation)
             if self._storage:
-                local_orders = self._storage.get_open_orders()
-                if len(positions) != len(local_orders):
-                    logger.warning(
-                        "[ReconciliationLoop] POSITION MISMATCH | Alpaca={} | Local CSV={}",
-                        len(positions), len(local_orders)
-                    )
+                raw_orders = self._account_service.get_raw_open_orders()
+                self._storage.sync_open_orders(raw_orders)
+                
+                # Update AppState order IDs
+                self.app_state.set_open_orders([str(o.id) for o in raw_orders])
             
             # 5. Clear pause state if healthy
             if self.app_state.is_paused():

@@ -15,7 +15,7 @@ from app.core.models import EntrySignal, ExitSignal, ValidationResult
 
 @pytest.fixture
 def mock_services():
-    return {
+    mocks = {
         "market_data": MagicMock(),
         "account": MagicMock(),
         "calculator": MagicMock(),
@@ -24,6 +24,9 @@ def mock_services():
         "validator": MagicMock(),
         "executor": MagicMock()
     }
+    # Important: prevent the loop from skipping due to "market closing"
+    mocks["account"].is_market_closing_soon.return_value = False
+    return mocks
 
 
 def test_entry_loop_full_pipeline(mock_services):
@@ -48,7 +51,11 @@ def test_entry_loop_full_pipeline(mock_services):
     }
     
     # 2. Calculator
-    mock_services["calculator"].run_entry_analysis.return_value = {"symbol": "AAPL", "entry_price": 150.0}
+    mock_services["calculator"].run_entry_analysis.return_value = {
+        "symbol": "AAPL", 
+        "entry_price": 150.0,
+        "latest_price": 150.0
+    }
     
     # 3. LLM
     signal = EntrySignal(
@@ -61,9 +68,12 @@ def test_entry_loop_full_pipeline(mock_services):
     mock_services["validator"].validate_entry.return_value = ValidationResult(validated=True)
     
     # Run one cycle
-    loop.run_once()
+    with patch("app.loops.entry_opportunity_loop.MAX_DOLLAR_PER_TRADE", 200.0):
+        loop.run_once()
     
     # Verify calls
+    # qty is overridden to 1 because latest_price=150 and MAX_DOLLAR_PER_TRADE=200
+    assert signal.qty == 1
     mock_services["executor"].execute_entry.assert_called_with(signal)
 
 

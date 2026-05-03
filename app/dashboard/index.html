@@ -3,150 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpaca Trading System | Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <title>Alpaca Alpha | Trading Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0a0b10;
-            --card-bg: rgba(255, 255, 255, 0.03);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --accent-color: #00ff88;
-            --text-primary: #ffffff;
-            --text-secondary: #94a3b8;
-            --danger: #ff4757;
-            --success: #2ed573;
-            --warning: #ffa502;
-            --active-tab: #00ff88;
+            --bg-dark: #0a0b10;
+            --card-bg: #161821;
+            --accent: #6366f1;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            background-image: radial-gradient(circle at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 40%);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding: 20px;
             min-height: 100vh;
         }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
         header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, #00ff88, #00a3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #818cf8, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-        /* Stats Bar */
-        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 0.75rem; backdrop-filter: blur(10px); }
-        .stat-label { color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; margin-bottom: 0.25rem; }
-        .stat-value { font-size: 1.25rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-        /* Tabs and Controls */
-        .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
-        
-        .tabs { display: flex; gap: 1rem; }
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-sub {
+            font-size: 12px;
+            margin-top: 5px;
+            color: var(--text-dim);
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 5px;
+            border-radius: 12px;
+        }
+
         .tab-btn {
-            background: transparent; border: none; color: var(--text-secondary);
-            font-size: 0.875rem; font-weight: 600; padding: 0.5rem 1rem; cursor: pointer;
-            border-bottom: 2px solid transparent; transition: all 0.2s;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
-        .tab-btn.active { color: var(--active-tab); border-bottom-color: var(--active-tab); }
 
-        .search-container { flex: 1; max-width: 300px; position: relative; }
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
         .search-input {
-            width: 100%; background: var(--card-bg); border: 1px solid var(--border-color);
-            color: var(--text-primary); border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            width: 300px;
+            outline: none;
         }
 
-        /* Table Section */
-        .content-box {
-            background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 1rem; padding: 1.5rem; backdrop-filter: blur(10px);
+        .content-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
         }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        th { text-align: left; padding: 1rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); }
-        td { padding: 1rem; border-bottom: 1px solid var(--border-color); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
 
-        .badge { padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
-        .badge-buy { background: rgba(46, 213, 115, 0.1); color: var(--success); }
-        .badge-sell { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
-        
-        /* Pagination */
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; font-size: 0.875rem; }
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 15px 20px;
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 15px;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-approved { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .status-rejected { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .status-submitted { background: rgba(99, 102, 241, 0.1); color: var(--accent); }
+
+        .hidden { display: none !important; }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
         .pg-btn {
-            background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary);
-            padding: 0.4rem 0.8rem; border-radius: 0.25rem; cursor: pointer;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
         }
+
         .pg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-        .hidden { display: none; }
+        .pulse-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #ff4444;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 8px #ff4444;
+        }
+        .pulse-dot.online {
+            background-color: #00ff88;
+            box-shadow: 0 0 12px #00ff88;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+
+        .holdings-container {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .holdings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .holding-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .holding-item:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .pnl-positive { color: var(--success); }
+        .pnl-negative { color: var(--danger); }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo">ALPACA TRADING DASHBOARD</div>
-            <div id="service-status" class="status-badge">Live Status: <span id="status-text">...</span></div>
+            <div class="logo">ALPACA ALPHA // ELITE</div>
+            <div id="connection-status" style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-dim);">
+                <span id="pulse-dot" class="pulse-dot"></span>
+                <span id="status-text">CONNECTING...</span>
+            </div>
         </header>
 
-        <div class="stats-bar">
+        <div class="stats-grid">
             <div class="stat-card"><div class="stat-label">Equity</div><div id="equity" class="stat-value">$0.00</div></div>
             <div class="stat-card"><div class="stat-label">Buying Power</div><div id="buying-power" class="stat-value">$0.00</div></div>
-            <div class="stat-card"><div class="stat-label">Open Orders</div><div id="open-orders-count" class="stat-value">0</div></div>
-            <div class="stat-card"><div class="stat-label">Uptime</div><div id="uptime" class="stat-value">00:00:00</div></div>
+            <div class="stat-card">
+                <div class="stat-label">Total PnL (Day)</div>
+                <div id="pnl-text" class="stat-value">$0.00</div>
+                <div id="pnl-pct" class="stat-sub">0.00%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Uptime</div>
+                <div id="uptime" class="stat-value">00:00:00</div>
+                <div id="last-update" class="stat-sub">Never synced</div>
+            </div>
         </div>
 
         <div class="controls-row">
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('signals')">RECENT SIGNALS</button>
-                <button class="tab-btn" onclick="switchTab('orders')">OPEN ORDERS</button>
+                <button class="tab-btn active" onclick="switchTab('signals')">SIGNALS</button>
+                <button class="tab-btn" onclick="switchTab('positions')">POSITIONS (<span id="pos-count">0</span>)</button>
+                <button class="tab-btn" onclick="switchTab('orders')">ORDERS (<span id="open-orders-count-tab">0</span>)</button>
+                <button class="tab-btn" onclick="switchTab('holdings')">HOLDINGS</button>
             </div>
-            <div class="search-container">
-                <input type="text" id="search" class="search-input" placeholder="Search symbol..." oninput="handleSearch()">
-            </div>
+            <input type="text" id="search" class="search-input" placeholder="Quick search..." oninput="handleSearch()">
         </div>
 
-        <div class="content-box">
-            <!-- Signals Table -->
+        <div class="content-card">
             <div id="signals-tab">
                 <table>
                     <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>Symbol</th>
-                            <th>Action</th>
-                            <th>Conf</th>
-                            <th>Target</th>
-                            <th>Stop</th>
-                            <th>Validator</th>
-                        </tr>
+                        <tr><th>Time</th><th>Symbol</th><th>Action</th><th>Conf</th><th>Target</th><th>Stop</th><th>Status</th></tr>
                     </thead>
                     <tbody id="signals-body"></tbody>
                 </table>
             </div>
 
-            <!-- Orders Table -->
+            <div id="positions-tab" class="hidden">
+                <table>
+                    <thead>
+                        <tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Avg Entry</th><th>Current</th><th>Unrealized PnL</th><th>PnL %</th></tr>
+                    </thead>
+                    <tbody id="positions-body"></tbody>
+                </table>
+            </div>
+
             <div id="orders-tab" class="hidden">
                 <table>
                     <thead>
-                        <tr>
-                            <th>Opened At</th>
-                            <th>Symbol</th>
-                            <th>Side</th>
-                            <th>Qty</th>
-                            <th>ID</th>
-                            <th>Status</th>
-                        </tr>
+                        <tr><th>Opened At</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Curr</th><th>Target</th><th>Stop</th><th>Status</th></tr>
                     </thead>
                     <tbody id="orders-body"></tbody>
                 </table>
             </div>
 
-            <div class="pagination">
+            <div id="holdings-tab" class="hidden">
+                <div class="holdings-container">
+                    <h3>Active Universe</h3>
+                    <p style="color: var(--text-dim); margin-top: 10px;">Assets currently being monitored for opportunities.</p>
+                    <div id="holdings-list" class="holdings-grid"></div>
+                </div>
+            </div>
+
+            <div class="pagination" id="pagination-controls">
                 <button id="prev-btn" class="pg-btn" onclick="changePage(-1)">PREV</button>
                 <span id="page-info">Page 1 of 1</span>
                 <button id="next-btn" class="pg-btn" onclick="changePage(1)">NEXT</button>
@@ -156,16 +330,24 @@
 
     <script>
         let currentTab = 'signals';
-        let rawData = { signals: [], orders: [] };
+        let rawData = { signals: [], orders: [], positions: [], active_assets: [] };
         let filteredData = [];
         let currentPage = 1;
         const pageSize = 10;
+        let lastUpdate = 0;
 
         function switchTab(tab) {
             currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(tab)));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
             document.getElementById('signals-tab').classList.toggle('hidden', tab !== 'signals');
+            document.getElementById('positions-tab').classList.toggle('hidden', tab !== 'positions');
             document.getElementById('orders-tab').classList.toggle('hidden', tab !== 'orders');
+            document.getElementById('holdings-tab').classList.toggle('hidden', tab !== 'holdings');
+            
+            document.getElementById('pagination-controls').classList.toggle('hidden', tab === 'holdings');
+            
             currentPage = 1;
             applyFilters();
         }
@@ -173,87 +355,137 @@
         async function refreshData() {
             try {
                 const [stRes, hiRes] = await Promise.all([fetch('/api/status'), fetch('/api/history')]);
+                if (!stRes.ok || !hiRes.ok) throw new Error("API Failure");
+
                 const st = await stRes.json();
                 const hi = await hiRes.json();
 
-                // Update Stats
+                document.getElementById('pulse-dot').classList.add('online');
                 document.getElementById('status-text').innerText = st.is_paused ? 'PAUSED' : 'ACTIVE';
-                document.getElementById('equity').innerText = `$${(st.account?.equity || 0).toLocaleString()}`;
-                document.getElementById('buying-power').innerText = `$${(st.account?.buying_power || 0).toLocaleString()}`;
-                document.getElementById('open-orders-count').innerText = hi.open_orders.length;
+                document.getElementById('status-text').style.color = st.is_paused ? 'var(--warning)' : 'var(--success)';
+                lastUpdate = Date.now();
+                document.getElementById('last-update').innerText = 'Synced just now';
+
+                const acc = st.account || {};
+                document.getElementById('equity').innerText = `$${(acc.equity || 0).toLocaleString()}`;
+                document.getElementById('buying-power').innerText = `$${(acc.buying_power || 0).toLocaleString()}`;
+                
+                const pnl = acc.day_pnl || 0;
+                const pnlPct = acc.day_pnl_pct || 0;
+                const pnlEl = document.getElementById('pnl-text');
+                pnlEl.innerText = `${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}`;
+                pnlEl.className = `stat-value ${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+                document.getElementById('pnl-pct').innerText = `${pnlPct >= 0 ? '+' : ''}${(pnlPct * 100).toFixed(2)}%`;
+
+                document.getElementById('pos-count').innerText = (hi.positions || []).length;
+                document.getElementById('open-orders-count-tab').innerText = (hi.open_orders || []).length;
                 
                 const start = new Date(st.uptime);
                 const diff = new Date(new Date() - start);
                 document.getElementById('uptime').innerText = diff.toISOString().substr(11, 8);
 
-                rawData.signals = hi.signals;
-                rawData.orders = hi.open_orders;
+                rawData.signals = hi.signals || [];
+                rawData.orders = hi.open_orders || [];
+                rawData.positions = hi.positions || [];
+                rawData.active_assets = st.active_assets || [];
                 
                 applyFilters();
-            } catch (e) { console.error(e); }
+                renderHoldings();
+            } catch (e) { 
+                console.error(e); 
+                document.getElementById('pulse-dot').classList.remove('online');
+                document.getElementById('status-text').innerText = 'OFFLINE';
+                document.getElementById('status-text').style.color = 'var(--danger)';
+            }
         }
+
+        function renderHoldings() {
+            const list = document.getElementById('holdings-list');
+            list.innerHTML = rawData.active_assets.map(sym => `<div class="holding-item">${sym}</div>`).join('');
+        }
+
+        setInterval(() => {
+            const sec = (Date.now() - lastUpdate) / 1000;
+            if (lastUpdate > 0 && sec > 5) {
+                document.getElementById('pulse-dot').classList.remove('online');
+                document.getElementById('status-text').innerText = 'LAGGING';
+                document.getElementById('status-text').style.color = 'var(--warning)';
+                document.getElementById('last-update').innerText = `${Math.round(sec)}s ago`;
+            }
+        }, 1000);
 
         function applyFilters() {
             const query = document.getElementById('search').value.toLowerCase();
-            const source = currentTab === 'signals' ? rawData.signals : rawData.orders;
-            
-            filteredData = source.filter(item => 
-                (item.symbol || '').toLowerCase().includes(query) ||
-                (item.action || '').toLowerCase().includes(query) ||
-                (item.status || '').toLowerCase().includes(query)
-            );
-            
-            renderTable();
-        }
-
-        function handleSearch() {
-            currentPage = 1;
-            applyFilters();
-        }
-
-        function changePage(delta) {
-            currentPage += delta;
+            let source = currentTab === 'signals' ? rawData.signals : (currentTab === 'orders' ? rawData.orders : rawData.positions);
+            filteredData = source.filter(item => JSON.stringify(item).toLowerCase().includes(query));
             renderTable();
         }
 
         function renderTable() {
+            const bodyId = `${currentTab}-body`;
+            const body = document.getElementById(bodyId);
+            if (!body) return;
+            body.innerHTML = '';
+            
             const start = (currentPage - 1) * pageSize;
-            const end = start + pageSize;
-            const pageItems = filteredData.slice(start, end);
-            const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+            const pageData = (filteredData || []).slice(start, start + pageSize);
 
-            document.getElementById('page-info').innerText = `Page ${currentPage} of ${totalPages}`;
+            pageData.forEach(item => {
+                const tr = document.createElement('tr');
+                try {
+                    if (currentTab === 'signals') {
+                        const timeStr = (item.timestamp || '').includes('T') ? item.timestamp.split('T')[1].split('.')[0] : (item.timestamp || '00:00:00');
+                        tr.innerHTML = `
+                            <td>${timeStr}</td>
+                            <td>${item.symbol || 'N/A'}</td>
+                            <td style="color: ${item.action === 'BUY' ? 'var(--success)' : item.action === 'SELL' ? 'var(--danger)' : '#888'}">${item.action || 'SKIP'}</td>
+                            <td>${((item.confidence || 0) * 100).toFixed(0)}%</td>
+                            <td>${item.target || '-'}</td>
+                            <td>${item.stop || '-'}</td>
+                            <td><span class="status-badge status-${(item.validator_status || 'rejected').toLowerCase()}">${item.validator_status || 'N/A'}</span></td>
+                        `;
+                    } else if (currentTab === 'orders') {
+                        const timeStr = (item.submitted_at || '').includes('T') ? item.submitted_at.split('T')[1].split('.')[0] : (item.submitted_at || '-');
+                        tr.innerHTML = `
+                            <td>${timeStr}</td>
+                            <td>${item.symbol || 'N/A'}</td>
+                            <td style="color: ${String(item.side).toLowerCase() === 'buy' ? 'var(--success)' : 'var(--danger)'}">${String(item.side || 'N/A').toUpperCase()}</td>
+                            <td>${item.qty || 0}</td>
+                            <td>${item.current_price || '...'}</td>
+                            <td>${item.target_price || '-'}</td>
+                            <td>${item.stop_loss_price || '-'}</td>
+                            <td><span class="status-badge status-submitted">${String(item.status || 'N/A').toUpperCase()}</span></td>
+                        `;
+                    } else if (currentTab === 'positions') {
+                        const pl = parseFloat(item.unrealized_pl) || 0;
+                        const plpc = (parseFloat(item.unrealized_plpc) * 100) || 0;
+                        const qty = parseFloat(item.qty) || 0;
+                        tr.innerHTML = `
+                            <td>${item.symbol || 'N/A'}</td>
+                            <td style="color: ${qty >= 0 ? 'var(--success)' : 'var(--danger)'}">${qty >= 0 ? 'LONG' : 'SHORT'}</td>
+                            <td>${qty}</td>
+                            <td>$${(parseFloat(item.avg_entry_price) || 0).toLocaleString()}</td>
+                            <td>$${(parseFloat(item.current_price) || 0).toLocaleString()}</td>
+                            <td class="${pl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${pl >= 0 ? '+' : ''}$${pl.toLocaleString()}</td>
+                            <td class="${pl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${plpc >= 0 ? '+' : ''}${plpc.toFixed(2)}%</td>
+                        `;
+                    }
+                    body.appendChild(tr);
+                } catch (e) {
+                    console.warn("Failed to render row:", e, item);
+                }
+            });
+
+            document.getElementById('page-info').innerText = `Page ${currentPage} of ${Math.ceil(filteredData.length / pageSize) || 1}`;
             document.getElementById('prev-btn').disabled = currentPage === 1;
-            document.getElementById('next-btn').disabled = currentPage === totalPages;
-
-            if (currentTab === 'signals') {
-                document.getElementById('signals-body').innerHTML = pageItems.map(s => `
-                    <tr>
-                        <td>${(s.timestamp || '').split('T')[1]?.split('.')[0] || s.timestamp}</td>
-                        <td style="font-family: 'JetBrains Mono';">${s.symbol}</td>
-                        <td><span class="badge badge-${(s.action||'').toLowerCase()}">${s.action}</span></td>
-                        <td>${(s.confidence * 100).toFixed(0)}%</td>
-                        <td>${s.target || '-'}</td>
-                        <td>${s.stop || '-'}</td>
-                        <td style="color: ${s.validator_status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'}">${s.validator_status}</td>
-                    </tr>
-                `).join('');
-            } else {
-                document.getElementById('orders-body').innerHTML = pageItems.map(o => `
-                    <tr>
-                        <td>${(o.opened_at || '').split('T')[1]?.split('.')[0] || o.opened_at}</td>
-                        <td style="font-family: 'JetBrains Mono';">${o.symbol}</td>
-                        <td>${o.entry_side}</td>
-                        <td>${o.qty}</td>
-                        <td style="font-size: 0.6rem; opacity: 0.5;">${o.alpaca_order_id}</td>
-                        <td><span style="color: var(--accent-color)">${o.status}</span></td>
-                    </tr>
-                `).join('');
-            }
+            document.getElementById('next-btn').disabled = currentPage >= Math.ceil(filteredData.length / pageSize);
         }
 
-        setInterval(refreshData, 5000);
-        refreshData();
+        function changePage(delta) { currentPage += delta; renderTable(); }
+        function handleSearch() { currentPage = 1; applyFilters(); }
+
+        setInterval(refreshData, 1000);
+        window.onload = refreshData;
     </script>
 </body>
 </html>

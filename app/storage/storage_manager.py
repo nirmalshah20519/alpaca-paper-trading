@@ -103,10 +103,50 @@ class StorageManager:
             "entry_side": result.side,
             "qty": result.qty,
             "entry_status": result.status,
+            "target_price": result.target_price,
+            "stop_loss_price": result.stop_loss_price,
             "opened_at": result.submitted_at,
             "status": "OPEN",
         }
         self.csv.append_row(self.open_orders_path, row)
+
+    def sync_open_orders(self, alpaca_orders: list[Any]) -> None:
+        """
+        Synchronise the open_orders.csv with the actual list from Alpaca.
+        Existing orders in CSV are preserved (keeping TP/SL), missing ones are added.
+        Orders no longer in Alpaca are removed from open_orders.csv.
+        """
+        import uuid
+        from app.utils.time_utils import utc_now
+        
+        current_rows = self.get_open_orders()
+        # Map alpaca_id -> row_dict
+        row_map = {r["alpaca_order_id"]: r for r in current_rows if r.get("alpaca_order_id")}
+        
+        new_rows = []
+        for ao in alpaca_orders:
+            aid = str(ao.id)
+            if aid in row_map:
+                # Update status if needed, but keep the rest
+                row = row_map[aid]
+                row["status"] = str(ao.status).upper()
+                new_rows.append(row)
+            else:
+                # New order found on Alpaca not in CSV
+                new_rows.append({
+                    "local_trade_id": str(uuid.uuid4())[:8],
+                    "alpaca_order_id": aid,
+                    "client_order_id": str(ao.client_order_id),
+                    "symbol": ao.symbol,
+                    "entry_side": str(ao.side).upper(),
+                    "qty": str(ao.qty),
+                    "entry_status": str(ao.status).upper(),
+                    "opened_at": str(ao.created_at or utc_now()),
+                    "status": "OPEN",
+                })
+        
+        logger.info("Syncing open orders: {} from Alpaca -> CSV", len(new_rows))
+        self.csv.rewrite_rows_atomic(self.open_orders_path, OPEN_ORDERS_HEADERS, new_rows)
 
     def record_signal(self, timestamp: str, flow: str, symbol: str, signal: Any, validation: Any) -> None:
         """Log a signal decision (approved or skipped)."""
@@ -120,7 +160,15 @@ class StorageManager:
             "target": getattr(signal, "target", None),
             "stop": getattr(signal, "stop", None),
             "reason_code": getattr(signal, "reason_code", "N/A"),
-            "validator_status": "APPROVED" if getattr(validation, "validated", False) else "REJECTED",
-            "validator_reason": getattr(validation, "reason", ""),
+            "validator_status": "APPROVED" if (validation and getattr(validation, "validated", False)) else "REJECTED",
+            "validator_reason": getattr(validation, "reason", "") if validation else "LLM_SKIP",
         }
         self.csv.append_row(self.signal_logs_path, row)
+
+    def get_recent_signals(self, limit: int = 100) -> list[dict[str, str]]:
+        rows = self.csv.read_rows(self.signal_logs_path)
+        return rows[-limit:] if rows else []
+
+    def get_recent_past_orders(self, limit: int = 100) -> list[dict[str, str]]:
+        rows = self.csv.read_rows(self.past_orders_path)
+        return rows[-limit:] if rows else []

@@ -43,7 +43,8 @@ class AlpacaMarketDataService(BaseMarketDataService):
         self._crypto_client = gateway.crypto_data_client
 
     def _is_crypto(self, symbol: str) -> bool:
-        return "/" in symbol
+        # Detect slash or common unslashed crypto symbols returned by Alpaca positions
+        return "/" in symbol or any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC"])
 
     def get_latest_price(self, symbol: str) -> float | None:
         try:
@@ -54,8 +55,13 @@ class AlpacaMarketDataService(BaseMarketDataService):
                 req = StockLatestTradeRequest(symbol_or_symbols=symbol)
                 res = self._stock_client.get_stock_latest_trade(req)
             
-            trade = res.get(symbol) if isinstance(res, dict) else res
-            return safe_float(trade.price) if trade else None
+            # alpaca-py responses typically have a .data attribute mapping symbol to trade
+            data = res.data if hasattr(res, "data") else res
+            trade = data.get(symbol) if isinstance(data, dict) else data
+            
+            if trade and hasattr(trade, "price"):
+                return safe_float(trade.price)
+            return None
         except Exception as exc:
             logger.warning("get_latest_price failed for {}: {}", symbol, exc)
             return None

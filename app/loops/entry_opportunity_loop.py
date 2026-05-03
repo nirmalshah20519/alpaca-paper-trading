@@ -23,7 +23,11 @@ from app.executor.trade_executor import TradeExecutor
 from app.loops.base_loop import BaseLoop
 from app.utils.logger import logger
 from app.utils.time_utils import utc_now
-from config.settings import ENTRY_INTERVAL_SECONDS
+from config.settings import (
+    ENTRY_INTERVAL_SECONDS, 
+    MAX_DOLLAR_PER_TRADE, 
+    STOCK_CLOSE_BUFFER_MINUTES
+)
 from config.prompts import ENTRY_SYSTEM_PROMPT
 
 
@@ -94,6 +98,18 @@ class EntryOpportunityLoop(BaseLoop):
             analysis = self._calculator.run_entry_analysis(market_data, account_snapshot)
             if not analysis: return
 
+            # Check for Analysis Throttling (Cost Efficiency)
+            latest_price = market_data.get("latest_price", 0)
+            if not self.app_state.should_analyze(symbol, latest_price):
+                logger.debug("[EntryOpportunityLoop] Skipping {} (Price/Time threshold not met).", symbol)
+                return
+
+            # Check Market Close Buffer for Stocks
+            if "/" not in symbol: # Stock
+                if self._account_service and self._account_service.is_market_closing_soon(STOCK_CLOSE_BUFFER_MINUTES):
+                    logger.warning("[EntryOpportunityLoop] Skipping Stock {} (Market Close Buffer).", symbol)
+                    return
+
             # 3. LLM Decision (Phase 5)
             if not self._llm or not self._prompt_builder: return
             prompt = self._prompt_builder.build_entry_prompt(analysis)
@@ -103,10 +119,27 @@ class EntryOpportunityLoop(BaseLoop):
                 response_model=EntrySignal
             )
 
-            # Record signal to CSV (Phase 1/8)
-            # We'll do validation first to log the result
-            
-            # 4. Validation (Phase 6)
+            # Mark as analyzed with price to throttle future calls
+            self.app_state.mark_analyzed(symbol, latest_price)
+
+            if signal.action == "SKIP":
+                # Log skip
+                if self._executor and self._executor.storage:
+                    self._executor.storage.record_signal(str(utc_now()), "ENTRY", symbol, signal, None)
+                return
+
+            # 4. Risk Management: Capital Sizing
+            latest_price = analysis.get("latest_price", 0)
+            if latest_price > 0:
+                calculated_qty = int(MAX_DOLLAR_PER_TRADE // latest_price)
+                if calculated_qty < 1:
+                    logger.warning("[EntryOpportunityLoop] Calculated qty for {} is 0 (Price={}). Skipping.", symbol, latest_price)
+                    return
+                if signal.qty != calculated_qty:
+                    logger.info("[EntryOpportunityLoop] Overriding LLM qty ({}) with Risk-Managed qty ({}) for {}.", signal.qty, calculated_qty, symbol)
+                    signal.qty = calculated_qty
+
+            # 5. Validation (Phase 6)
             if not self._validator: return
             validation = self._validator.validate_entry(signal)
             
