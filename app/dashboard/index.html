@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpaca Trading System | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0b10;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --accent-color: #00ff88;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 163, 255, 0.05) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            background: linear-gradient(90deg, #00ff88, #00a3ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 99px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-dot.paused { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Main Content */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+
+        section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        h2 {
+            font-size: 1.125rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-buy { background: rgba(46, 213, 115, 0.1); color: var(--success); }
+        .badge-sell { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+        .badge-skip { background: rgba(148, 163, 184, 0.1); color: var(--text-secondary); }
+
+        /* Active Assets List */
+        .asset-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .asset-tag {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">ALPACA TRADING OS</div>
+            <div id="service-status" class="status-badge">
+                <div class="status-dot"></div>
+                <span id="status-text">SYSTEM ACTIVE</span>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Portfolio Equity</div>
+                <div id="equity" class="stat-value">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Buying Power</div>
+                <div id="buying-power" class="stat-value">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Open Orders</div>
+                <div id="open-orders" class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">System Uptime</div>
+                <div id="uptime" class="stat-value">00:00:00</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <section>
+                <h2>Recent Signals</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Symbol</th>
+                                <th>Action</th>
+                                <th>Conf</th>
+                                <th>Validator</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signals-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <h2>Active Asset Universe</h2>
+                <div id="active-assets" class="asset-list">
+                    <!-- Populated by JS -->
+                </div>
+                <div style="margin-top: 2rem;">
+                    <h2>Historical Results</h2>
+                    <div id="past-orders-summary">
+                        <!-- Brief summary -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        async function updateDashboard() {
+            try {
+                const [statusRes, historyRes] = await Promise.all([
+                    fetch('/api/status'),
+                    fetch('/api/history')
+                ]);
+
+                const status = await statusRes.json();
+                const history = await historyRes.json();
+
+                // Update Status
+                const statusDot = document.querySelector('.status-dot');
+                const statusText = document.getElementById('status-text');
+                if (status.is_paused) {
+                    statusDot.classList.add('paused');
+                    statusText.innerText = 'PAUSED / RECONCILING';
+                } else {
+                    statusDot.classList.remove('paused');
+                    statusText.innerText = 'SYSTEM ACTIVE';
+                }
+
+                // Update Stats
+                const acct = status.account || {};
+                document.getElementById('equity').innerText = `$${(acct.equity || 0).toLocaleString()}`;
+                document.getElementById('buying-power').innerText = `$${(acct.buying_power || 0).toLocaleString()}`;
+                document.getElementById('open-orders').innerText = status.open_orders_count;
+                
+                // Uptime calculation (simple)
+                const start = new Date(status.uptime);
+                const now = new Date();
+                const diff = new Date(now - start);
+                document.getElementById('uptime').innerText = diff.toISOString().substr(11, 8);
+
+                // Update Signals
+                const signalsBody = document.getElementById('signals-body');
+                signalsBody.innerHTML = history.signals.map(s => `
+                    <tr>
+                        <td>${s.timestamp.split('T')[1].split('.')[0]}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace;">${s.symbol}</td>
+                        <td><span class="badge badge-${s.action.toLowerCase()}">${s.action}</span></td>
+                        <td>${(s.confidence * 100).toFixed(0)}%</td>
+                        <td><span style="color: ${s.validator_status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'}">${s.validator_status}</span></td>
+                        <td style="color: var(--text-secondary); font-size: 0.75rem;">${s.reason_code}</td>
+                    </tr>
+                `).join('');
+
+                // Update Assets
+                const assetList = document.getElementById('active-assets');
+                assetList.innerHTML = status.active_assets.map(a => `<div class="asset-tag">${a}</div>`).join('');
+
+            } catch (err) {
+                console.error('Dashboard update failed:', err);
+            }
+        }
+
+        // Refresh every 5 seconds
+        setInterval(updateDashboard, 5000);
+        updateDashboard();
+    </script>
+</body>
+</html>
