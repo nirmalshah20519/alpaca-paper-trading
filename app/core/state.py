@@ -64,6 +64,11 @@ class AppState:
         with self.asset_list_lock:
             return list(self._active_assets)
 
+    @property
+    def last_asset_refresh_utc(self) -> Optional[str]:
+        with self.asset_list_lock:
+            return self._last_asset_refresh_utc
+
     def set_active_assets(self, symbols: list[str], refresh_time: Optional[str] = None) -> None:
         with self.asset_list_lock:
             self._active_assets = list(symbols)

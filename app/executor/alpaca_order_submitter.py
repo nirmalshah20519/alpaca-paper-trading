@@ -38,15 +38,17 @@ class AlpacaOrderSubmitter:
             
             side = OrderSide.BUY if signal.action == "BUY" else OrderSide.SELL
             
-            # Use Limit order if possible to avoid slippage
+            # Use GTC for crypto, DAY for stocks
+            tif = TimeInForce.GTC if "/" in signal.sym else TimeInForce.DAY
+            
             order_req = MarketOrderRequest(
                 symbol=signal.sym,
                 qty=signal.qty,
                 side=side,
-                time_in_force=TimeInForce.DAY
+                time_in_force=tif
             )
             
-            logger.info("Submitting {} order for {} qty={}", side, signal.sym, signal.qty)
+            logger.info("Submitting {} order for {} qty={} tif={}", side, signal.sym, signal.qty, tif)
             order = self.client.submit_order(order_data=order_req)
             logger.info("Order submitted successfully. ID: {}", order.id)
             return order
@@ -60,13 +62,14 @@ class AlpacaOrderSubmitter:
         Submit a Market Sell order to close a position.
         """
         try:
+            tif = TimeInForce.GTC if "/" in symbol else TimeInForce.DAY
             order_req = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty,
                 side=OrderSide.SELL,
-                time_in_force=TimeInForce.DAY
+                time_in_force=tif
             )
-            logger.info("Submitting EXIT order for {} qty={}", symbol, qty)
+            logger.info("Submitting EXIT order for {} qty={} tif={}", symbol, qty, tif)
             order = self.client.submit_order(order_data=order_req)
             logger.info("Exit order submitted. ID: {}", order.id)
             return order

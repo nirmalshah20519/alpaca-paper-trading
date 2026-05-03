@@ -14,6 +14,10 @@ from __future__ import annotations
 import signal
 import sys
 import time
+import warnings
+
+# Suppress annoying dependency warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="websockets.legacy")
 
 from app.core.config import AppConfig
 from app.core.state import AppState

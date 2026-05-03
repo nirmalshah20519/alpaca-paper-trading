@@ -29,7 +29,7 @@ class HeartbeatLoop(BaseLoop):
         )
 
     def run_once(self) -> None:
-        n_assets = len(self.app_state.get_active_assets_copy())
+        n_assets = len(self.app_state.get_active_assets())
         paused = self.app_state.is_paused()
 
         logger.info(

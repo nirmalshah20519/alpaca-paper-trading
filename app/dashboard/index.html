@@ -16,307 +16,244 @@
             --danger: #ff4757;
             --success: #2ed573;
             --warning: #ffa502;
+            --active-tab: #00ff88;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(0, 163, 255, 0.05) 0%, transparent 40%);
+            background-image: radial-gradient(circle at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 40%);
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
         header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
         }
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            letter-spacing: -1px;
-            background: linear-gradient(90deg, #00ff88, #00a3ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, #00ff88, #00a3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Stats Bar */
+        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 0.75rem; backdrop-filter: blur(10px); }
+        .stat-label { color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .stat-value { font-size: 1.25rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+        /* Tabs and Controls */
+        .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
+        
+        .tabs { display: flex; gap: 1rem; }
+        .tab-btn {
+            background: transparent; border: none; color: var(--text-secondary);
+            font-size: 0.875rem; font-weight: 600; padding: 0.5rem 1rem; cursor: pointer;
+            border-bottom: 2px solid transparent; transition: all 0.2s;
+        }
+        .tab-btn.active { color: var(--active-tab); border-bottom-color: var(--active-tab); }
+
+        .search-container { flex: 1; max-width: 300px; position: relative; }
+        .search-input {
+            width: 100%; background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-primary); border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem;
         }
 
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 99px;
-            font-size: 0.875rem;
-            font-weight: 600;
+        /* Table Section */
+        .content-box {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 1rem; padding: 1.5rem; backdrop-filter: blur(10px);
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--success);
-            box-shadow: 0 0 10px var(--success);
-        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { text-align: left; padding: 1rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); }
+        td { padding: 1rem; border-bottom: 1px solid var(--border-color); }
 
-        .status-dot.paused { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            padding: 1.5rem;
-            border-radius: 1rem;
-            backdrop-filter: blur(10px);
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover { transform: translateY(-5px); }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Main Content */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2rem;
-        }
-
-        section {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-        }
-
-        h2 {
-            font-size: 1.125rem;
-            margin-bottom: 1.5rem;
-            color: var(--text-secondary);
-        }
-
-        /* Tables */
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.875rem;
-        }
-
-        th {
-            text-align: left;
-            padding: 1rem;
-            color: var(--text-secondary);
-            border-bottom: 1px solid var(--border-color);
-            font-weight: 500;
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
+        .badge { padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
         .badge-buy { background: rgba(46, 213, 115, 0.1); color: var(--success); }
         .badge-sell { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
-        .badge-skip { background: rgba(148, 163, 184, 0.1); color: var(--text-secondary); }
-
-        /* Active Assets List */
-        .asset-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+        
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; font-size: 0.875rem; }
+        .pg-btn {
+            background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary);
+            padding: 0.4rem 0.8rem; border-radius: 0.25rem; cursor: pointer;
         }
+        .pg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-        .asset-tag {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid var(--border-color);
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo">ALPACA TRADING OS</div>
-            <div id="service-status" class="status-badge">
-                <div class="status-dot"></div>
-                <span id="status-text">SYSTEM ACTIVE</span>
-            </div>
+            <div class="logo">ALPACA TRADING DASHBOARD</div>
+            <div id="service-status" class="status-badge">Live Status: <span id="status-text">...</span></div>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Portfolio Equity</div>
-                <div id="equity" class="stat-value">$0.00</div>
+        <div class="stats-bar">
+            <div class="stat-card"><div class="stat-label">Equity</div><div id="equity" class="stat-value">$0.00</div></div>
+            <div class="stat-card"><div class="stat-label">Buying Power</div><div id="buying-power" class="stat-value">$0.00</div></div>
+            <div class="stat-card"><div class="stat-label">Open Orders</div><div id="open-orders-count" class="stat-value">0</div></div>
+            <div class="stat-card"><div class="stat-label">Uptime</div><div id="uptime" class="stat-value">00:00:00</div></div>
+        </div>
+
+        <div class="controls-row">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('signals')">RECENT SIGNALS</button>
+                <button class="tab-btn" onclick="switchTab('orders')">OPEN ORDERS</button>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Buying Power</div>
-                <div id="buying-power" class="stat-value">$0.00</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Open Orders</div>
-                <div id="open-orders" class="stat-value">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">System Uptime</div>
-                <div id="uptime" class="stat-value">00:00:00</div>
+            <div class="search-container">
+                <input type="text" id="search" class="search-input" placeholder="Search symbol..." oninput="handleSearch()">
             </div>
         </div>
 
-        <div class="main-grid">
-            <section>
-                <h2>Recent Signals</h2>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Symbol</th>
-                                <th>Action</th>
-                                <th>Conf</th>
-                                <th>Validator</th>
-                                <th>Reason</th>
-                            </tr>
-                        </thead>
-                        <tbody id="signals-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+        <div class="content-box">
+            <!-- Signals Table -->
+            <div id="signals-tab">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Action</th>
+                            <th>Conf</th>
+                            <th>Target</th>
+                            <th>Stop</th>
+                            <th>Validator</th>
+                        </tr>
+                    </thead>
+                    <tbody id="signals-body"></tbody>
+                </table>
+            </div>
 
-            <section>
-                <h2>Active Asset Universe</h2>
-                <div id="active-assets" class="asset-list">
-                    <!-- Populated by JS -->
-                </div>
-                <div style="margin-top: 2rem;">
-                    <h2>Historical Results</h2>
-                    <div id="past-orders-summary">
-                        <!-- Brief summary -->
-                    </div>
-                </div>
-            </section>
+            <!-- Orders Table -->
+            <div id="orders-tab" class="hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Opened At</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>ID</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-body"></tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prev-btn" class="pg-btn" onclick="changePage(-1)">PREV</button>
+                <span id="page-info">Page 1 of 1</span>
+                <button id="next-btn" class="pg-btn" onclick="changePage(1)">NEXT</button>
+            </div>
         </div>
     </div>
 
     <script>
-        async function updateDashboard() {
+        let currentTab = 'signals';
+        let rawData = { signals: [], orders: [] };
+        let filteredData = [];
+        let currentPage = 1;
+        const pageSize = 10;
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(tab)));
+            document.getElementById('signals-tab').classList.toggle('hidden', tab !== 'signals');
+            document.getElementById('orders-tab').classList.toggle('hidden', tab !== 'orders');
+            currentPage = 1;
+            applyFilters();
+        }
+
+        async function refreshData() {
             try {
-                const [statusRes, historyRes] = await Promise.all([
-                    fetch('/api/status'),
-                    fetch('/api/history')
-                ]);
-
-                const status = await statusRes.json();
-                const history = await historyRes.json();
-
-                // Update Status
-                const statusDot = document.querySelector('.status-dot');
-                const statusText = document.getElementById('status-text');
-                if (status.is_paused) {
-                    statusDot.classList.add('paused');
-                    statusText.innerText = 'PAUSED / RECONCILING';
-                } else {
-                    statusDot.classList.remove('paused');
-                    statusText.innerText = 'SYSTEM ACTIVE';
-                }
+                const [stRes, hiRes] = await Promise.all([fetch('/api/status'), fetch('/api/history')]);
+                const st = await stRes.json();
+                const hi = await hiRes.json();
 
                 // Update Stats
-                const acct = status.account || {};
-                document.getElementById('equity').innerText = `$${(acct.equity || 0).toLocaleString()}`;
-                document.getElementById('buying-power').innerText = `$${(acct.buying_power || 0).toLocaleString()}`;
-                document.getElementById('open-orders').innerText = status.open_orders_count;
+                document.getElementById('status-text').innerText = st.is_paused ? 'PAUSED' : 'ACTIVE';
+                document.getElementById('equity').innerText = `$${(st.account?.equity || 0).toLocaleString()}`;
+                document.getElementById('buying-power').innerText = `$${(st.account?.buying_power || 0).toLocaleString()}`;
+                document.getElementById('open-orders-count').innerText = hi.open_orders.length;
                 
-                // Uptime calculation (simple)
-                const start = new Date(status.uptime);
-                const now = new Date();
-                const diff = new Date(now - start);
+                const start = new Date(st.uptime);
+                const diff = new Date(new Date() - start);
                 document.getElementById('uptime').innerText = diff.toISOString().substr(11, 8);
 
-                // Update Signals
-                const signalsBody = document.getElementById('signals-body');
-                signalsBody.innerHTML = history.signals.map(s => `
+                rawData.signals = hi.signals;
+                rawData.orders = hi.open_orders;
+                
+                applyFilters();
+            } catch (e) { console.error(e); }
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const source = currentTab === 'signals' ? rawData.signals : rawData.orders;
+            
+            filteredData = source.filter(item => 
+                (item.symbol || '').toLowerCase().includes(query) ||
+                (item.action || '').toLowerCase().includes(query) ||
+                (item.status || '').toLowerCase().includes(query)
+            );
+            
+            renderTable();
+        }
+
+        function handleSearch() {
+            currentPage = 1;
+            applyFilters();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            renderTable();
+        }
+
+        function renderTable() {
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageItems = filteredData.slice(start, end);
+            const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+
+            document.getElementById('page-info').innerText = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage === totalPages;
+
+            if (currentTab === 'signals') {
+                document.getElementById('signals-body').innerHTML = pageItems.map(s => `
                     <tr>
-                        <td>${s.timestamp.split('T')[1].split('.')[0]}</td>
-                        <td style="font-family: 'JetBrains Mono', monospace;">${s.symbol}</td>
-                        <td><span class="badge badge-${s.action.toLowerCase()}">${s.action}</span></td>
+                        <td>${(s.timestamp || '').split('T')[1]?.split('.')[0] || s.timestamp}</td>
+                        <td style="font-family: 'JetBrains Mono';">${s.symbol}</td>
+                        <td><span class="badge badge-${(s.action||'').toLowerCase()}">${s.action}</span></td>
                         <td>${(s.confidence * 100).toFixed(0)}%</td>
-                        <td><span style="color: ${s.validator_status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'}">${s.validator_status}</span></td>
-                        <td style="color: var(--text-secondary); font-size: 0.75rem;">${s.reason_code}</td>
+                        <td>${s.target || '-'}</td>
+                        <td>${s.stop || '-'}</td>
+                        <td style="color: ${s.validator_status === 'APPROVED' ? 'var(--success)' : 'var(--danger)'}">${s.validator_status}</td>
                     </tr>
                 `).join('');
-
-                // Update Assets
-                const assetList = document.getElementById('active-assets');
-                assetList.innerHTML = status.active_assets.map(a => `<div class="asset-tag">${a}</div>`).join('');
-
-            } catch (err) {
-                console.error('Dashboard update failed:', err);
+            } else {
+                document.getElementById('orders-body').innerHTML = pageItems.map(o => `
+                    <tr>
+                        <td>${(o.opened_at || '').split('T')[1]?.split('.')[0] || o.opened_at}</td>
+                        <td style="font-family: 'JetBrains Mono';">${o.symbol}</td>
+                        <td>${o.entry_side}</td>
+                        <td>${o.qty}</td>
+                        <td style="font-size: 0.6rem; opacity: 0.5;">${o.alpaca_order_id}</td>
+                        <td><span style="color: var(--accent-color)">${o.status}</span></td>
+                    </tr>
+                `).join('');
             }
         }
 
-        // Refresh every 5 seconds
-        setInterval(updateDashboard, 5000);
-        updateDashboard();
+        setInterval(refreshData, 5000);
+        refreshData();
     </script>
 </body>
 </html>
