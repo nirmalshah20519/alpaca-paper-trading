@@ -31,7 +31,7 @@ from app.core.exceptions import (
 # ---------------------------------------------------------------------------
 
 ALLOWED_ENV_KEYS: frozenset[str] = frozenset(
-    {"ALPACA_API_KEY", "ALPACA_API_SECRET", "OPENAI_API_KEY", "TRADING_MODE"}
+    {"ALPACA_API_KEY", "ALPACA_API_SECRET", "OPENAI_API_KEY", "TRADING_MODE", "USEGPT"}
 )
 
 ALLOWED_TRADING_MODES: frozenset[str] = frozenset({"PAPER", "REAL"})
@@ -52,6 +52,7 @@ class AppConfig:
     openai_api_key : str
     trading_mode : str  — either "PAPER" or "REAL"
     is_paper : bool     — True when trading_mode == "PAPER"
+    use_gpt : bool      — True to use OpenAI, False for local LFM
     """
 
     _instance: AppConfig | None = None
@@ -68,6 +69,7 @@ class AppConfig:
         self.openai_api_key = openai_api_key
         self.trading_mode = trading_mode
         self.is_paper: bool = trading_mode == "PAPER"
+        self.use_gpt: bool = True
 
     # ------------------------------------------------------------------
     # Factory
@@ -136,6 +138,7 @@ class AppConfig:
             openai_api_key=merged["OPENAI_API_KEY"],
             trading_mode=mode,
         )
+        instance.use_gpt = merged["USEGPT"].upper() != "FALSE"
         cls._instance = instance
         return instance
 

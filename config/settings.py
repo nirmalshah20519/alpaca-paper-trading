@@ -33,7 +33,7 @@ STOCK_CLOSE_BUFFER_MINUTES: int = 15
 # ---------------------------------------------------------------------------
 
 ASSET_REFRESH_INTERVAL_SECONDS: int = 3_600   # 1 hour
-ENTRY_INTERVAL_SECONDS: int = 120              # 2 minutes
+ENTRY_INTERVAL_SECONDS: int = 30              # 30 seconds
 MONITOR_INTERVAL_SECONDS: int = 30             # 30 seconds
 RECONCILIATION_INTERVAL_SECONDS: int = 600      # 10 minutes
 HEARTBEAT_INTERVAL_SECONDS: int = 60            # 1 minute

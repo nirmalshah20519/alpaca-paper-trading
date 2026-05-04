@@ -36,13 +36,20 @@ class AlpacaOrderSubmitter:
             # Plan says "Default must always be PAPER mode". 
             # TradingClient handles this via the 'paper' flag in AlpacaGateway.
             
+            symbol = signal.sym
+            # Normalize crypto symbols (inject slash if missing)
+            if any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC", "BCH", "LINK", "AVAX", "UNI"]):
+                if "/" not in symbol:
+                    if symbol.endswith("USDT"): symbol = f"{symbol[:-4]}/USDT"
+                    elif symbol.endswith("USD"): symbol = f"{symbol[:-3]}/USD"
+
             side = OrderSide.BUY if signal.action == "BUY" else OrderSide.SELL
             
             # Use GTC for crypto, DAY for stocks
-            tif = TimeInForce.GTC if "/" in signal.sym else TimeInForce.DAY
+            tif = TimeInForce.GTC if "/" in symbol else TimeInForce.DAY
             
             order_req = MarketOrderRequest(
-                symbol=signal.sym,
+                symbol=symbol,
                 qty=float(signal.qty),
                 side=side,
                 time_in_force=tif

@@ -78,7 +78,15 @@ def main() -> None:
         
         # 6. Initialize logic services (Phases 4-7)
         calculator = CalculatorEngine()
-        llm_provider = OpenAIProvider(api_key=config.openai_api_key)
+        
+        if config.use_gpt:
+            logger.info("Using OpenAI GPT Provider.")
+            llm_provider = OpenAIProvider(api_key=config.openai_api_key)
+        else:
+            logger.info("Using Local LFM Provider (LiquidAI/LFM2.5-1.2B-Thinking).")
+            from app.llm.lfm_provider import LFMProvider
+            llm_provider = LFMProvider()
+            
         llm = AskLLM(llm_provider)
         prompt_builder = PromptBuilder()
         validator = SignalValidator(app_state)
