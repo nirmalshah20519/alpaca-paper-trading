@@ -50,6 +50,18 @@ STOP_LOSS_ATR_MULT: float = 2.0
 TAKE_PROFIT_ATR_MULT: float = 4.0
 
 # ---------------------------------------------------------------------------
+# Exit / PnL Risk Context
+# ---------------------------------------------------------------------------
+
+# Used by PnLRiskCalculator to contextualize open-position P&L for the exit LLM.
+EXIT_ATR_PERIOD: int = 14
+EXIT_TRAILING_ATR_MULT: float = 3.0
+EXIT_PROFIT_PROTECTION_TRIGGER_PCT: float = 0.01
+EXIT_BREAKEVEN_PROFIT_TRIGGER_PCT: float = 0.005
+EXIT_MAX_PROFIT_GIVEBACK_RATIO: float = 0.45
+EXIT_LOSS_CONTROL_PCT: float = -0.01
+
+# ---------------------------------------------------------------------------
 # Asset Selector
 # ---------------------------------------------------------------------------
 

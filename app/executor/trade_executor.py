@@ -12,8 +12,6 @@ Design rules:
 from __future__ import annotations
 
 import uuid
-from typing import Optional
-
 from app.core.models import EntrySignal, ExecutionResult
 from app.executor.alpaca_order_submitter import AlpacaOrderSubmitter
 from app.storage.storage_manager import StorageManager
@@ -88,7 +86,7 @@ class TradeExecutor:
                 client_order_id=str(alpaca_order.client_order_id),
                 symbol=symbol,
                 side="SELL",
-                qty=int(qty),
+                qty=float(qty),
                 submitted_at=str(utc_now()),
                 status="submitted"
             )
@@ -100,7 +98,7 @@ class TradeExecutor:
                 client_order_id=f"fail-exit-{local_id}",
                 symbol=symbol,
                 side="SELL",
-                qty=int(qty),
+                qty=float(qty),
                 submitted_at=str(utc_now()),
                 status="failed",
                 error=str(exc)

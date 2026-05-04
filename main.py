@@ -131,7 +131,13 @@ def main() -> None:
 
         # 8. Start Dashboard Server (Background Thread)
         from app.dashboard.server import run_server
-        run_server(storage_manager, app_state, services.market_data_service, port=8000)
+        run_server(
+            storage_manager,
+            app_state,
+            services.market_data_service,
+            account_service=services.account_service,
+            port=8000,
+        )
 
         # 9. Setup signal handling for graceful shutdown
         def handle_exit(signum, frame):

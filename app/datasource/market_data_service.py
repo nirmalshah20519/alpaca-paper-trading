@@ -38,24 +38,33 @@ class BaseMarketDataService(ABC):
 
 
 class AlpacaMarketDataService(BaseMarketDataService):
+    CRYPTO_BASES: frozenset[str] = frozenset(
+        {"BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC", "BCH", "LINK", "AVAX", "UNI"}
+    )
+
     def __init__(self, gateway: AlpacaGateway) -> None:
         self._stock_client = gateway.stock_data_client
         self._crypto_client = gateway.crypto_data_client
 
     def _is_crypto(self, symbol: str) -> bool:
-        # Detect slash or common unslashed crypto symbols returned by Alpaca positions
-        return "/" in symbol or any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC"])
+        symbol = str(symbol).upper()
+        if "/" in symbol:
+            return True
+        if symbol.endswith("USDT"):
+            return symbol[:-4] in self.CRYPTO_BASES
+        if symbol.endswith("USD"):
+            return symbol[:-3] in self.CRYPTO_BASES
+        return False
 
     def _normalize_symbol(self, symbol: str) -> str:
         """Injects slash into crypto symbols if missing (e.g. BTCUSD -> BTC/USD)."""
+        symbol = str(symbol).upper()
         if "/" in symbol:
             return symbol
-        if any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC"]):
-            # Split USD or USDT from the end
-            if symbol.endswith("USDT"):
-                return f"{symbol[:-4]}/USDT"
-            if symbol.endswith("USD"):
-                return f"{symbol[:-3]}/USD"
+        if symbol.endswith("USDT") and symbol[:-4] in self.CRYPTO_BASES:
+            return f"{symbol[:-4]}/USDT"
+        if symbol.endswith("USD") and symbol[:-3] in self.CRYPTO_BASES:
+            return f"{symbol[:-3]}/USD"
         return symbol
 
     def get_latest_price(self, symbol: str) -> float | None:

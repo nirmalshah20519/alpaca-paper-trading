@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from app.calculator.indicator_calculator import IndicatorCalculator
 from app.calculator.risk_calculator import RiskCalculator
 from app.calculator.position_sizer import PositionSizer
+from app.calculator.pnl_risk_calculator import PnLRiskCalculator
 from app.calculator.calculator_engine import CalculatorEngine
 
 
@@ -85,3 +86,35 @@ def test_calculator_engine(sample_bars):
     assert "risk" in results
     assert "sizing" in results
     assert results["liquidity"]["is_liquid"] is True
+
+
+def test_pnl_risk_calculator_detects_profit_giveback():
+    dates = [datetime.now(timezone.utc) - timedelta(minutes=i) for i in range(30)]
+    dates.reverse()
+    bars = pd.DataFrame(
+        {
+            "open": np.linspace(100, 109, 30),
+            "high": [101.0] * 10 + [120.0] * 20,
+            "low": [99.0] * 30,
+            "close": np.linspace(100, 109, 30),
+            "volume": [1000000] * 30,
+        },
+        index=dates,
+    )
+    position = {
+        "symbol": "AAPL",
+        "qty": 10,
+        "side": "long",
+        "avg_entry_price": 100.0,
+        "unrealized_pl": 90.0,
+        "unrealized_plpc": 0.09,
+    }
+    market_data = {"symbol": "AAPL", "latest_price": 109.0, "bars": bars}
+
+    result = PnLRiskCalculator().compute(position, market_data)
+
+    assert result["pnl_pct"] == 0.09
+    assert result["mfe_pct"] == 0.2
+    assert result["giveback_ratio"] > 0.45
+    assert result["risk_state"] in {"PROFIT_GIVEBACK", "TRAIL_BREACH"}
+    assert result["exit_pressure"] == "high"

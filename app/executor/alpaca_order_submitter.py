@@ -11,7 +11,9 @@ Design rules:
 
 from __future__ import annotations
 
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+from typing import Any
+
+from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.client import TradingClient
 
@@ -23,6 +25,10 @@ class AlpacaOrderSubmitter:
     """
     Submits orders to Alpaca using the TradingClient.
     """
+
+    CRYPTO_BASES: frozenset[str] = frozenset(
+        {"BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC", "BCH", "LINK", "AVAX", "UNI"}
+    )
 
     def __init__(self, trading_client: TradingClient) -> None:
         self.client = trading_client
@@ -36,17 +42,10 @@ class AlpacaOrderSubmitter:
             # Plan says "Default must always be PAPER mode". 
             # TradingClient handles this via the 'paper' flag in AlpacaGateway.
             
-            symbol = signal.sym
-            # Normalize crypto symbols (inject slash if missing)
-            if any(symbol.startswith(c) and len(symbol) <= 8 for c in ["BTC", "ETH", "SOL", "DOGE", "SHIB", "LTC", "BCH", "LINK", "AVAX", "UNI"]):
-                if "/" not in symbol:
-                    if symbol.endswith("USDT"): symbol = f"{symbol[:-4]}/USDT"
-                    elif symbol.endswith("USD"): symbol = f"{symbol[:-3]}/USD"
+            symbol = self._normalize_symbol(signal.sym)
 
             side = OrderSide.BUY if signal.action == "BUY" else OrderSide.SELL
-            
-            # Use GTC for crypto, DAY for stocks
-            tif = TimeInForce.GTC if "/" in symbol else TimeInForce.DAY
+            tif = self._time_in_force(symbol)
             
             order_req = MarketOrderRequest(
                 symbol=symbol,
@@ -55,7 +54,7 @@ class AlpacaOrderSubmitter:
                 time_in_force=tif
             )
             
-            logger.info("Submitting {} order for {} qty={} tif={}", side, signal.sym, signal.qty, tif)
+            logger.info("Submitting {} order for {} qty={} tif={}", side, symbol, signal.qty, tif)
             order = self.client.submit_order(order_data=order_req)
             logger.info("Order submitted successfully. ID: {}", order.id)
             return order
@@ -69,14 +68,15 @@ class AlpacaOrderSubmitter:
         Submit a Market Sell order to close a position.
         """
         try:
-            tif = TimeInForce.GTC if "/" in symbol else TimeInForce.DAY
+            normalized_symbol = self._normalize_symbol(symbol)
+            tif = self._time_in_force(normalized_symbol)
             order_req = MarketOrderRequest(
-                symbol=symbol,
-                qty=qty,
+                symbol=normalized_symbol,
+                qty=float(qty),
                 side=OrderSide.SELL,
                 time_in_force=tif
             )
-            logger.info("Submitting EXIT order for {} qty={} tif={}", symbol, qty, tif)
+            logger.info("Submitting EXIT order for {} qty={} tif={}", normalized_symbol, qty, tif)
             order = self.client.submit_order(order_data=order_req)
             logger.info("Exit order submitted. ID: {}", order.id)
             return order
@@ -95,3 +95,32 @@ class AlpacaOrderSubmitter:
         except Exception as exc:
             logger.error("Failed to cancel order {}: {}", order_id, exc)
             return False
+
+    def _normalize_symbol(self, symbol: str) -> str:
+        """
+        Normalize Alpaca crypto position symbols like BTCUSD to BTC/USD.
+        Stock symbols are returned unchanged.
+        """
+        symbol = str(symbol).upper()
+        if "/" in symbol:
+            return symbol
+
+        if symbol.endswith("USDT"):
+            base = symbol[:-4]
+            quote = "USDT"
+        elif symbol.endswith("USD"):
+            base = symbol[:-3]
+            quote = "USD"
+        else:
+            return symbol
+
+        if base in self.CRYPTO_BASES:
+            return f"{base}/{quote}"
+        return symbol
+
+    def _time_in_force(self, symbol: str) -> TimeInForce:
+        """
+        Alpaca crypto market orders support GTC/IOC, while stock market orders
+        may use DAY. Use GTC for crypto to support fractional closes.
+        """
+        return TimeInForce.GTC if "/" in symbol else TimeInForce.DAY

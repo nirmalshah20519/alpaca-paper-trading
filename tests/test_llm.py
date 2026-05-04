@@ -39,6 +39,31 @@ def test_prompt_builder():
     assert data["ind"]["rsi"] == 45.0
 
 
+def test_exit_prompt_includes_pnl_risk_context():
+    builder = PromptBuilder()
+    prompt = builder.build_exit_prompt(
+        "AAPL",
+        {"qty": 10, "avg_entry_price": 100.0, "unrealized_pl": 90.0, "unrealized_plpc": 0.09},
+        {"latest_price": 109.0},
+        {
+            "risk_state": "PROFIT_GIVEBACK",
+            "exit_pressure": "high",
+            "pnl": 90.0,
+            "pnl_pct": 0.09,
+            "r_mult": 1.5,
+            "giveback_ratio": 0.55,
+            "trail_breached": True,
+            "protect_profit": True,
+        },
+    )
+
+    data = json.loads(prompt)
+    assert data["sym"] == "AAPL"
+    assert data["pnl_risk"]["state"] == "PROFIT_GIVEBACK"
+    assert data["pnl_risk"]["pressure"] == "high"
+    assert data["pnl_risk"]["giveback_ratio"] == 0.55
+
+
 def test_openai_provider_success(mock_openai_client):
     provider = OpenAIProvider(api_key="fake-key")
     

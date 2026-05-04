@@ -65,7 +65,13 @@ class PromptBuilder:
             
         return prompt
 
-    def build_exit_prompt(self, symbol: str, position: dict, market_data: dict) -> str:
+    def build_exit_prompt(
+        self,
+        symbol: str,
+        position: dict,
+        market_data: dict,
+        pnl_risk: dict | None = None,
+    ) -> str:
         """
         Build a compact JSON prompt for an exit decision.
         """
@@ -78,12 +84,36 @@ class PromptBuilder:
                 "pnl_pct": position.get("unrealized_plpc"),
             },
             "px": market_data.get("latest_price"),
-            # Add any exit-specific indicators if needed
         }
+
+        if pnl_risk:
+            payload["pnl_risk"] = {
+                "state": pnl_risk.get("risk_state"),
+                "pressure": pnl_risk.get("exit_pressure"),
+                "pnl": pnl_risk.get("pnl"),
+                "pnl_pct": pnl_risk.get("pnl_pct"),
+                "r": pnl_risk.get("r_mult"),
+                "pnl_atr": pnl_risk.get("pnl_atr"),
+                "mfe_pct": pnl_risk.get("mfe_pct"),
+                "giveback_pct": pnl_risk.get("giveback_pct"),
+                "giveback_ratio": pnl_risk.get("giveback_ratio"),
+                "trail_stop": pnl_risk.get("trail_stop"),
+                "trail_breached": pnl_risk.get("trail_breached"),
+                "breakeven_breached": pnl_risk.get("breakeven_breached"),
+                "protect_profit": pnl_risk.get("protect_profit"),
+                "atr_pct": pnl_risk.get("atr_pct"),
+            }
         
         prompt = json.dumps(payload, separators=(",", ":"))
         
         if len(prompt) > MAX_INPUT_CHARS_EXIT:
-            prompt = prompt[:MAX_INPUT_CHARS_EXIT]
+            logger.warning(
+                "Exit prompt for {} exceeds character budget ({} > {}). Dropping pnl_risk context.",
+                symbol, len(prompt), MAX_INPUT_CHARS_EXIT
+            )
+            payload.pop("pnl_risk", None)
+            prompt = json.dumps(payload, separators=(",", ":"))
+            if len(prompt) > MAX_INPUT_CHARS_EXIT:
+                prompt = prompt[:MAX_INPUT_CHARS_EXIT]
             
         return prompt

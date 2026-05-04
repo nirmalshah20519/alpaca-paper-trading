@@ -55,6 +55,7 @@ class ThreadManager:
                 app_state=app_state,
                 account_service=services.account_service,
                 market_data_service=services.market_data_service,
+                calculator=services.calculator,
                 llm=services.llm,
                 prompt_builder=services.prompt_builder,
                 executor=services.executor

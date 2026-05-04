@@ -16,6 +16,7 @@ from app.core.state import AppState
 from app.core.models import ExitSignal
 from app.datasource.account_service import BaseAccountService
 from app.datasource.market_data_service import BaseMarketDataService
+from app.calculator.calculator_engine import CalculatorEngine
 from app.llm.ask_llm import AskLLM
 from app.llm.prompt_builder import PromptBuilder
 from app.executor.trade_executor import TradeExecutor
@@ -36,6 +37,7 @@ class OpenOrderMonitorLoop(BaseLoop):
         app_state: AppState,
         account_service: Optional[BaseAccountService] = None,
         market_data_service: Optional[BaseMarketDataService] = None,
+        calculator: Optional[CalculatorEngine] = None,
         llm: Optional[AskLLM] = None,
         prompt_builder: Optional[PromptBuilder] = None,
         executor: Optional[TradeExecutor] = None,
@@ -47,6 +49,7 @@ class OpenOrderMonitorLoop(BaseLoop):
         )
         self._account_service = account_service
         self._market_data = market_data_service
+        self._calculator = calculator
         self._llm = llm
         self._prompt_builder = prompt_builder
         self._executor = executor
@@ -113,10 +116,18 @@ class OpenOrderMonitorLoop(BaseLoop):
             # 1. Fetch current market data for exit
             if not self._market_data: return
             market_data = self._market_data.fetch_required_exit_data(symbol)
+            pnl_risk = {}
+            if self._calculator:
+                pnl_risk = self._calculator.run_exit_pnl_analysis(position, market_data)
             
             # 2. Ask LLM for exit decision
             if not self._llm or not self._prompt_builder: return
-            prompt = self._prompt_builder.build_exit_prompt(symbol, position, market_data)
+            prompt = self._prompt_builder.build_exit_prompt(
+                symbol,
+                position,
+                market_data,
+                pnl_risk,
+            )
             
             signal: ExitSignal = self._llm.get_decision(
                 prompt=prompt,

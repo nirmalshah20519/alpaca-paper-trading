@@ -12,6 +12,7 @@ from app.calculator.indicator_calculator import IndicatorCalculator
 from app.calculator.risk_calculator import RiskCalculator
 from app.calculator.liquidity_calculator import LiquidityCalculator
 from app.calculator.position_sizer import PositionSizer
+from app.calculator.pnl_risk_calculator import PnLRiskCalculator
 from app.utils.logger import logger
 
 
@@ -25,6 +26,7 @@ class CalculatorEngine:
         self.risk = RiskCalculator()
         self.liquidity = LiquidityCalculator()
         self.sizer = PositionSizer()
+        self.pnl_risk = PnLRiskCalculator()
 
     def run_entry_analysis(self, market_data: dict, account_snapshot: dict) -> dict:
         """
@@ -71,3 +73,17 @@ class CalculatorEngine:
             results["sizing"] = {}
 
         return results
+
+    def run_exit_pnl_analysis(self, position: dict, market_data: dict) -> dict:
+        """
+        Compute P&L-aware risk context for an open position.
+
+        This is intentionally separate from execution. The result is added to
+        the exit LLM payload, while the existing HOLD/COMPLETE flow remains the
+        same.
+        """
+        try:
+            return self.pnl_risk.compute(position, market_data)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Exit PnL risk analysis failed: {}", exc)
+            return {}

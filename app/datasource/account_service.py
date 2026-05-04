@@ -15,7 +15,8 @@ Loops must NOT hold any lock during Alpaca calls — fetch first, then lock.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from tenacity import (
     retry,
@@ -64,6 +65,10 @@ class BaseAccountService(ABC):
     @abstractmethod
     def get_raw_open_orders(self) -> list[Any]:
         """Return raw Alpaca order objects."""
+
+    @abstractmethod
+    def get_today_orders(self) -> list[dict]:
+        """Return today's closed/all orders as a list of dicts."""
 
     @abstractmethod
     def get_position(self, symbol: str) -> Optional[dict]:
@@ -164,6 +169,14 @@ class AlpacaAccountService(BaseAccountService):
             logger.error("get_raw_open_orders failed: {}", exc)
             return []
 
+    def get_today_orders(self) -> list[dict]:
+        try:
+            raw_orders = self._fetch_today_orders()
+            return [self._order_to_dict(order) for order in raw_orders]
+        except Exception as exc:
+            logger.error("get_today_orders failed: {}", exc)
+            return []
+
     def get_position(self, symbol: str) -> Optional[dict]:
         positions = self.get_positions()
         for pos in positions:
@@ -224,3 +237,45 @@ class AlpacaAccountService(BaseAccountService):
     def _fetch_open_orders(self):
         req = GetOrdersRequest(status=QueryOrderStatus.OPEN)
         return self._client.get_orders(filter=req)
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    def _fetch_today_orders(self):
+        # "Today" follows the machine's local calendar day, then converts the
+        # boundary to UTC for Alpaca.
+        local_now = datetime.now().astimezone()
+        start_local = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        req = GetOrdersRequest(
+            status=QueryOrderStatus.ALL,
+            after=start_local.astimezone(timezone.utc),
+            until=local_now.astimezone(timezone.utc),
+            limit=100,
+        )
+        return self._client.get_orders(filter=req)
+
+    def _order_to_dict(self, order: Any) -> dict:
+        return {
+            "id": str(getattr(order, "id", "")),
+            "client_order_id": str(getattr(order, "client_order_id", "")),
+            "symbol": str(getattr(order, "symbol", "")),
+            "qty": safe_float(getattr(order, "qty", None)),
+            "filled_qty": safe_float(getattr(order, "filled_qty", None), 0.0),
+            "side": self._enum_value(getattr(order, "side", "")),
+            "order_type": self._enum_value(getattr(order, "order_type", "")),
+            "status": self._enum_value(getattr(order, "status", "")),
+            "time_in_force": self._enum_value(getattr(order, "time_in_force", "")),
+            "submitted_at": str(getattr(order, "submitted_at", "") or ""),
+            "filled_at": str(getattr(order, "filled_at", "") or ""),
+            "created_at": str(getattr(order, "created_at", "") or ""),
+            "updated_at": str(getattr(order, "updated_at", "") or ""),
+            "filled_avg_price": safe_float(getattr(order, "filled_avg_price", None)),
+            "limit_price": safe_float(getattr(order, "limit_price", None)),
+            "stop_price": safe_float(getattr(order, "stop_price", None)),
+        }
+
+    def _enum_value(self, value: Any) -> str:
+        return str(value.value) if hasattr(value, "value") else str(value)
