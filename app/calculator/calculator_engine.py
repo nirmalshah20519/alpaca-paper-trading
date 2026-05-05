@@ -14,6 +14,7 @@ from app.calculator.liquidity_calculator import LiquidityCalculator
 from app.calculator.position_sizer import PositionSizer
 from app.calculator.pnl_risk_calculator import PnLRiskCalculator
 from app.utils.logger import logger
+from config.risk_limits import ALLOW_SHORT_SELLING
 
 
 class CalculatorEngine:
@@ -48,6 +49,7 @@ class CalculatorEngine:
             return {}
 
         results = {"symbol": symbol, "entry_price": price}
+        results["account"] = account_snapshot or {}
 
         # 1. Indicators
         ind_results = self.indicators.compute_all(bars)
@@ -55,16 +57,21 @@ class CalculatorEngine:
 
         # 2. Risk Levels
         atr = ind_results.get("atr_14")
-        risk_results = self.risk.compute_risk_levels("BUY", price, atr)
-        results["risk"] = risk_results
+        buy_risk = self.risk.compute_risk_levels("BUY", price, atr)
+        sell_risk = self.risk.compute_risk_levels("SELL", price, atr) if ALLOW_SHORT_SELLING else {}
+        results["risk"] = {
+            **buy_risk,
+            "buy": buy_risk,
+            "sell": sell_risk,
+        }
 
         # 3. Liquidity
-        liq_results = self.liquidity.check_liquidity(market_data, bars)
+        liq_results = self.liquidity.check_liquidity(market_data, bars, account_snapshot)
         results["liquidity"] = liq_results
 
         # 4. Position Sizing
         equity = account_snapshot.get("equity", 0.0)
-        sl_price = risk_results.get("stop_loss", 0.0)
+        sl_price = buy_risk.get("stop_loss", 0.0)
         
         if equity > 0 and sl_price > 0:
             size_results = self.sizer.compute_size(equity, price, sl_price)

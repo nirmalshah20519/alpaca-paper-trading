@@ -22,15 +22,23 @@ class AccountValidator:
     def __init__(self, app_state: AppState) -> None:
         self.app_state = app_state
 
-    def validate(self, signal: EntrySignal, account_data: dict) -> ValidationResult:
+    def validate(
+        self,
+        signal: EntrySignal,
+        account_data: dict,
+        entry_price: float | None = None,
+    ) -> ValidationResult:
         if signal.action == "SKIP":
             return ValidationResult(validated=True)
 
+        if not account_data:
+            return ValidationResult(validated=False, reason="Missing account data")
+
         # 1. Check buying power
         buying_power = account_data.get("buying_power", 0.0)
-        # We need the current market price to estimate cost. 
-        # Since EntrySignal doesn't have it, we use the average of target/stop or a very safe estimate.
-        price_estimate = (signal.target + signal.stop) / 2 if (signal.target and signal.stop) else 0.0
+        price_estimate = entry_price or (
+            (signal.target + signal.stop) / 2 if (signal.target and signal.stop) else 0.0
+        )
         
         estimated_cost = signal.qty * price_estimate
         
@@ -38,8 +46,11 @@ class AccountValidator:
             return ValidationResult(validated=False, reason=f"Insufficient buying power (Need ${estimated_cost:.2f}, Have ${buying_power:.2f})")
 
         # 2. Check position count
-        # In Phase 3, ReconciliationLoop updates AppState with account data.
-        # But we don't have current position count in AppState yet.
-        # Let's assume account_data has it.
+        position_count = len(self.app_state.get_positions())
+        if position_count >= MAX_OPEN_POSITIONS:
+            return ValidationResult(
+                validated=False,
+                reason=f"Max open positions reached ({position_count} >= {MAX_OPEN_POSITIONS})",
+            )
         
         return ValidationResult(validated=True)

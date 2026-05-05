@@ -47,6 +47,7 @@ class AppState:
         self._account_data: dict[str, Any] = {}
         self._positions: list[dict[str, Any]] = []
         self._open_order_ids: list[str] = []
+        self._open_order_symbols: list[str] = []
 
         # ----------------------------------------------------------------
         # Shutdown coordination
@@ -165,9 +166,22 @@ class AppState:
         with self.open_orders_lock:
             return list(self._open_order_ids)
 
-    def set_open_orders(self, order_ids: list[str]) -> None:
+    def get_open_order_symbols(self) -> list[str]:
+        with self.open_orders_lock:
+            return list(self._open_order_symbols)
+
+    def set_open_orders(self, order_ids: list[str], symbols: list[str] | None = None) -> None:
         with self.open_orders_lock:
             self._open_order_ids = list(order_ids)
+            if symbols is not None:
+                self._open_order_symbols = list(symbols)
+
+    def add_open_order(self, order_id: str | None, symbol: str | None) -> None:
+        with self.open_orders_lock:
+            if order_id and order_id not in self._open_order_ids:
+                self._open_order_ids.append(order_id)
+            if symbol and symbol not in self._open_order_symbols:
+                self._open_order_symbols.append(symbol)
 
     # ------------------------------------------------------------------
     # Shutdown

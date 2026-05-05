@@ -1,14 +1,18 @@
 # Alpaca Paper Trading System (24/7 Crypto + Stocks)
 
-A professional-grade, autonomous trading system that uses AI (OpenAI) and technical analysis to trade a dynamic universe of US Stocks and Crypto.
+A professional-grade, autonomous trading system that uses AI (OpenAI or local LFM) and technical analysis to trade a dynamic universe of US Stocks and Crypto.
 
 ## 🚀 Key Features
 - **24/7/365 Crypto Trading**: Seamlessly switches to Crypto-only when US markets are closed.
-- **AI-Driven Decisions**: Uses GPT-4o-mini to analyze technical indicators and sentiment.
-- **Dynamic Asset Universe**: Automatically scores and selects the top 20 most volatile/liquid assets every hour.
+- **AI-Driven Decisions**: Uses GPT-4o-mini by default, or a local LFM provider when `USEGPT=FALSE`.
+- **Dynamic Asset Universe**: Automatically scores and selects the top 25 balance-aware opportunity assets every hour.
 - **Real-Time Dashboard**: Premium web UI (FastAPI) showing live positions, signals, and account equity with 1s updates.
 - **Professional Risk Management**:
-  - **Dollar-Based Sizing**: Default $200 per trade (automatically calculates quantity).
+  - **Risk-Capped Sizing**: Caps submitted quantity by deterministic risk sizing and the default $200 per-trade limit.
+  - **Short-Aware Exits**: Long positions exit with sell orders; short positions buy to cover when short selling is enabled.
+  - **Hard TP/SL Exits**: Stored targets and stops are merged into exit checks before the LLM is consulted.
+  - **Daily Risk Pauses**: Reconciliation pauses new entries on daily loss, portfolio drawdown, or max trades/day breaches.
+  - **Daily Liquidity Checks**: Intraday bar volume is rolled up to daily volume; crypto uses notional dollar volume.
   - **Market Close Buffer**: Stops stock entries 15 minutes before US market close.
   - **Deep Reconciliation**: Automatically syncs local state with Alpaca exchange state every 10 mins.
 
@@ -23,10 +27,14 @@ A professional-grade, autonomous trading system that uses AI (OpenAI) and techni
    Create a `.env` file in the root:
    ```env
    ALPACA_API_KEY=your_key
-   ALPACA_SECRET_KEY=your_secret
+   ALPACA_API_SECRET=your_secret
    OPENAI_API_KEY=your_openai_key
    TRADING_MODE=PAPER
+   USEGPT=TRUE
    ```
+
+   `OPENAI_API_KEY` is required only when `USEGPT=TRUE`. Set `USEGPT=FALSE` to run the local LFM provider without an OpenAI key.
+   The local LFM path installs `torch`, `transformers`, and `accelerate` from `requirements.txt`; GPU-specific Torch wheels may still need the install command recommended for your CUDA version.
 
 ## 📈 Running the System
 
@@ -36,6 +44,17 @@ python main.py
 ```
 Access the dashboard:
 [http://localhost:8000](http://localhost:8000)
+
+## Optional LLM Latency Benchmark
+
+To compare local Liquid LFM prompt-to-response latency against OpenAI GPT on the same entry prompt:
+
+```powershell
+$env:RUN_LLM_LATENCY_TEST="1"
+python -m pytest tests\test_llm_latency.py -s -p no:cacheprovider
+```
+
+The benchmark reads `OPENAI_API_KEY` from the process environment or `.env`. It reports local model load time separately from prompt-to-response latency.
 
 ## 📁 Project Structure
 - `/app/loops`: Autonomous threads for entry, monitoring, and reconciliation.

@@ -7,6 +7,7 @@ Tests for CsvStore CSV initialisation, append, read, and atomic rewrite.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,6 +19,7 @@ from app.storage.storage_manager import (
     SIGNAL_LOGS_HEADERS,
     REJECTED_SIGNALS_HEADERS,
 )
+from app.core.models import ExecutionResult
 
 
 # ---------------------------------------------------------------------------
@@ -182,3 +184,106 @@ class TestStorageManagerInit:
 
         rejected_headers = (tmp_path / "rejected_signals.csv").read_text().splitlines()[0]
         assert "payload_hash" in rejected_headers
+
+
+class TestStorageManagerOrderLifecycle:
+
+    def _manager(self, tmp_path: Path) -> StorageManager:
+        manager = StorageManager()
+        manager.open_orders_path = tmp_path / "open_orders.csv"
+        manager.past_orders_path = tmp_path / "past_orders.csv"
+        manager.signal_logs_path = tmp_path / "signal_logs.csv"
+        manager.rejected_signals_path = tmp_path / "rejected_signals.csv"
+        manager.init_all()
+        return manager
+
+    def test_record_closed_order_moves_exit_to_history(self, tmp_path):
+        manager = self._manager(tmp_path)
+        manager.record_open_order(ExecutionResult(
+            local_trade_id="trade-1",
+            alpaca_order_id="entry-1",
+            client_order_id="client-1",
+            symbol="AAPL",
+            side="BUY",
+            qty=2,
+            submitted_at="2026-05-05T00:00:00+00:00",
+            status="filled",
+            target_price=150.0,
+            stop_loss_price=140.0,
+        ))
+
+        entry_row = manager.get_open_order_for_symbol("AAPL")
+        manager.record_closed_order(
+            entry_row,
+            ExecutionResult(
+                local_trade_id="exit-1",
+                alpaca_order_id="exit-1",
+                client_order_id="client-exit-1",
+                symbol="AAPL",
+                side="SELL",
+                qty=2,
+                submitted_at="2026-05-05T00:30:00+00:00",
+                status="filled",
+            ),
+            "TARGET_REACHED",
+        )
+        manager.remove_open_order_by_symbol("AAPL")
+
+        assert manager.get_open_orders() == []
+        history = manager.get_recent_past_orders()
+        assert history[0]["symbol"] == "AAPL"
+        assert history[0]["entry_alpaca_order_id"] == "entry-1"
+        assert history[0]["exit_alpaca_order_id"] == "exit-1"
+        assert history[0]["exit_reason_code"] == "TARGET_REACHED"
+        assert history[0]["holding_minutes"] == "30.00"
+
+    def test_sync_preserves_position_rows_then_archives_closed_rows(self, tmp_path):
+        manager = self._manager(tmp_path)
+        manager.csv.append_row(manager.open_orders_path, {
+            "local_trade_id": "trade-1",
+            "alpaca_order_id": "entry-1",
+            "symbol": "BTC/USD",
+            "entry_side": "BUY",
+            "qty": "0.1",
+            "entry_status": "SUBMITTED",
+            "target_price": "65000",
+            "stop_loss_price": "59000",
+            "opened_at": "2026-05-05T00:00:00+00:00",
+            "status": "OPEN",
+        })
+
+        manager.sync_open_orders([], position_symbols=["BTCUSD"])
+
+        rows = manager.get_open_orders()
+        assert len(rows) == 1
+        assert rows[0]["status"] == "POSITION_OPEN"
+        assert rows[0]["target_price"] == "65000"
+        assert manager.get_recent_past_orders() == []
+
+        manager.sync_open_orders([], position_symbols=[])
+
+        assert manager.get_open_orders() == []
+        history = manager.get_recent_past_orders()
+        assert len(history) == 1
+        assert history[0]["symbol"] == "BTC/USD"
+        assert history[0]["exit_reason_code"] == "RECONCILED_CLOSED"
+
+    def test_sync_does_not_create_entry_row_for_unmatched_order_on_held_symbol(self, tmp_path):
+        manager = self._manager(tmp_path)
+
+        manager.sync_open_orders(
+            [
+                SimpleNamespace(
+                    id="exit-1",
+                    client_order_id="client-exit-1",
+                    symbol="AAPL",
+                    side="sell",
+                    qty="2",
+                    status="new",
+                    created_at="2026-05-05T00:00:00+00:00",
+                )
+            ],
+            position_symbols=["AAPL"],
+        )
+
+        assert manager.get_open_orders() == []

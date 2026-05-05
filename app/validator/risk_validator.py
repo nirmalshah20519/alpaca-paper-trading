@@ -19,25 +19,38 @@ class RiskValidator:
     Validates the risk parameters of an entry signal.
     """
 
-    def validate(self, signal: EntrySignal) -> ValidationResult:
+    def validate(self, signal: EntrySignal, entry_price: float | None = None) -> ValidationResult:
         """
-        Check RR ratio.
+        Check target/stop direction and risk/reward using deterministic price.
         """
         if signal.action == "SKIP":
             return ValidationResult(validated=True)
 
-        if not signal.target or not signal.stop or not signal.qty:
-             return ValidationResult(validated=False, reason="Missing target/stop/qty for BUY")
+        if signal.target is None or signal.stop is None or not signal.qty:
+            return ValidationResult(validated=False, reason="Missing target/stop/qty")
 
-        risk = abs(signal.stop - signal.qty) # This is not right, risk per share is entry - stop
-        # Actually, EntrySignal doesn't have entry_price. 
-        # Wait, EntrySignal should have the entry price the LLM assumed.
-        # But we use the market price.
-        
-        # In this phase, we just check the RR ratio provided in the signal or computed elsewhere.
-        # Let's assume the RR ratio check is performed against a computed value.
-        
-        # For now, we'll validate the RR ratio if the signal has it, or just pass.
-        # Actually, let's use the stop and target from the signal.
-        
+        if entry_price is None or entry_price <= 0:
+            return ValidationResult(validated=False, reason="Missing entry price for risk validation")
+
+        if signal.action == "BUY":
+            risk = entry_price - signal.stop
+            reward = signal.target - entry_price
+            if not (signal.stop < entry_price < signal.target):
+                return ValidationResult(validated=False, reason="Invalid BUY target/stop direction")
+        else:
+            risk = signal.stop - entry_price
+            reward = entry_price - signal.target
+            if not (signal.target < entry_price < signal.stop):
+                return ValidationResult(validated=False, reason="Invalid SELL target/stop direction")
+
+        if risk <= 0 or reward <= 0:
+            return ValidationResult(validated=False, reason="Invalid risk/reward distances")
+
+        rr_ratio = reward / risk
+        if rr_ratio < MIN_RISK_REWARD_RATIO:
+            return ValidationResult(
+                validated=False,
+                reason=f"Risk/reward too low ({rr_ratio:.2f} < {MIN_RISK_REWARD_RATIO:.2f})",
+            )
+
         return ValidationResult(validated=True)

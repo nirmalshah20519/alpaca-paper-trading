@@ -10,6 +10,7 @@ import numpy as np
 from datetime import datetime, timedelta, timezone
 
 from app.calculator.indicator_calculator import IndicatorCalculator
+from app.calculator.liquidity_calculator import LiquidityCalculator
 from app.calculator.risk_calculator import RiskCalculator
 from app.calculator.position_sizer import PositionSizer
 from app.calculator.pnl_risk_calculator import PnLRiskCalculator
@@ -86,6 +87,43 @@ def test_calculator_engine(sample_bars):
     assert "risk" in results
     assert "sizing" in results
     assert results["liquidity"]["is_liquid"] is True
+    assert "buy" in results["risk"]
+
+
+def test_liquidity_uses_daily_volume_not_last_bar_average():
+    dates = [datetime(2026, 5, 5, 13, 30, tzinfo=timezone.utc) + timedelta(minutes=i) for i in range(10)]
+    bars = pd.DataFrame(
+        {
+            "close": [100.0] * 10,
+            "volume": [100_000] * 10,
+        },
+        index=dates,
+    )
+
+    result = LiquidityCalculator().check_liquidity({"spread_pct": 0.001}, bars)
+
+    assert result["avg_daily_volume"] == 1_000_000.0
+    assert result["is_liquid"] is True
+
+
+def test_crypto_liquidity_uses_daily_dollar_volume():
+    dates = [datetime(2026, 5, 5, 0, 0, tzinfo=timezone.utc) + timedelta(minutes=i) for i in range(10)]
+    bars = pd.DataFrame(
+        {
+            "close": [50_000.0] * 10,
+            "volume": [3.0] * 10,
+        },
+        index=dates,
+    )
+
+    result = LiquidityCalculator().check_liquidity(
+        {"symbol": "BTC/USD", "spread_pct": 0.001},
+        bars,
+    )
+
+    assert result["avg_daily_volume"] == 30.0
+    assert result["avg_daily_dollar_volume"] == 1_500_000.0
+    assert result["is_liquid"] is True
 
 
 def test_pnl_risk_calculator_detects_profit_giveback():

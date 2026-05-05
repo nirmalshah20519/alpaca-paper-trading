@@ -7,7 +7,6 @@ Uses LiquidAI/LFM2.5-1.2B-Thinking.
 
 from __future__ import annotations
 
-import json
 import re
 import traceback
 from typing import Type, TypeVar
@@ -15,8 +14,11 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from pydantic import BaseModel
 
+from app.core.models import ExitSignal
 from app.llm.ask_llm import BaseLLMProvider
+from app.llm.response_safety import parse_llm_response
 from app.utils.logger import logger
+from config.llm_config import MAX_OUTPUT_TOKENS_ENTRY, MAX_OUTPUT_TOKENS_EXIT
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -63,6 +65,8 @@ class LFMProvider(BaseLLMProvider):
                 {"role": "user", "content": prompt}
             ]
             
+            logger.debug("Raw Prompt : {}", messages)
+            
             prompt_text = self.tokenizer.apply_chat_template(
                 messages,
                 add_generation_prompt=True,
@@ -76,29 +80,27 @@ class LFMProvider(BaseLLMProvider):
             with torch.no_grad():
                 output_ids = self.model.generate(
                     **inputs,
-                    do_sample=True,
-                    temperature=0.05,
-                    top_k=50,
+                    do_sample=False,
                     repetition_penalty=1.05,
-                    max_new_tokens=2048,
+                    max_new_tokens=self._max_new_tokens(response_model),
                 )
 
             # Decode only the NEW tokens
             raw_content = self.tokenizer.decode(output_ids[0][prompt_length:], skip_special_tokens=True)
-            logger.debug("LFM Raw Response: {}", raw_content)
+            # logger.debug("LFM Raw Response: {}", raw_content)
 
             # Robust JSON extraction
             json_str = self._extract_json(raw_content)
-            if not json_str:
-                raise ValueError(f"Could not find JSON in LFM response: {raw_content}")
-
-            data = json.loads(json_str)
-            return response_model.model_validate(data)
+            content_to_parse = json_str if json_str else raw_content
+            return parse_llm_response(content_to_parse, response_model, prompt, "LFM")
 
         except Exception as exc:
             logger.error("LFM local inference failed: {}", exc)
             logger.debug(traceback.format_exc())
             raise
+
+    def _max_new_tokens(self, response_model: Type[T]) -> int:
+        return MAX_OUTPUT_TOKENS_EXIT if response_model is ExitSignal else MAX_OUTPUT_TOKENS_ENTRY
 
     def _extract_json(self, text: str) -> str | None:
         """Extracts the first valid JSON block from text, handling thinking model noise."""

@@ -4,8 +4,8 @@ app/core/config.py
 AppConfig — loads, validates, and exposes the four allowed env variables.
 
 Rules from the plan (§1 Hard Environment Constraint):
-  - Only ALPACA_API_KEY, ALPACA_API_SECRET, OPENAI_API_KEY, TRADING_MODE
-    may appear in .env.
+  - Only ALPACA_API_KEY, ALPACA_API_SECRET, OPENAI_API_KEY, TRADING_MODE,
+    and USEGPT may appear in .env.
   - TRADING_MODE must be "PAPER" or "REAL".
   - No model names, thresholds, symbols, or risk limits may come from .env.
 
@@ -34,7 +34,12 @@ ALLOWED_ENV_KEYS: frozenset[str] = frozenset(
     {"ALPACA_API_KEY", "ALPACA_API_SECRET", "OPENAI_API_KEY", "TRADING_MODE", "USEGPT"}
 )
 
+BASE_REQUIRED_ENV_KEYS: frozenset[str] = frozenset(
+    {"ALPACA_API_KEY", "ALPACA_API_SECRET", "TRADING_MODE"}
+)
+
 ALLOWED_TRADING_MODES: frozenset[str] = frozenset({"PAPER", "REAL"})
+ALLOWED_USEGPT_VALUES: frozenset[str] = frozenset({"TRUE", "FALSE"})
 
 
 # ---------------------------------------------------------------------------
@@ -116,13 +121,26 @@ class AppConfig:
                 "All non-secret config must live in config/*.py"
             )
 
+        use_gpt_raw = (merged["USEGPT"] or "TRUE").upper()
+        if use_gpt_raw not in ALLOWED_USEGPT_VALUES:
+            raise InvalidEnvVarError(
+                f"USEGPT='{use_gpt_raw}' is invalid. Allowed values: TRUE or FALSE"
+            )
+        use_gpt = use_gpt_raw != "FALSE"
+
         # Validate required keys are present and non-empty
-        for key in ALLOWED_ENV_KEYS:
+        for key in BASE_REQUIRED_ENV_KEYS:
             if not merged[key]:
                 raise MissingEnvVarError(
                     f"Required environment variable '{key}' is missing or empty. "
                     f"Add it to .env or set it in the process environment."
                 )
+
+        if use_gpt and not merged["OPENAI_API_KEY"]:
+            raise MissingEnvVarError(
+                "Required environment variable 'OPENAI_API_KEY' is missing or empty. "
+                "Add it to .env or set USEGPT=FALSE to use the local LFM provider."
+            )
 
         # Validate TRADING_MODE
         mode = merged["TRADING_MODE"].upper()
@@ -138,7 +156,7 @@ class AppConfig:
             openai_api_key=merged["OPENAI_API_KEY"],
             trading_mode=mode,
         )
-        instance.use_gpt = merged["USEGPT"].upper() != "FALSE"
+        instance.use_gpt = use_gpt
         cls._instance = instance
         return instance
 

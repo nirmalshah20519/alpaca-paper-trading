@@ -65,4 +65,4 @@ EXIT_LOSS_CONTROL_PCT: float = -0.01
 # Asset Selector
 # ---------------------------------------------------------------------------
 
-ASSET_SELECTOR_TOP_N: int = 20        # keep top-N from the scored universe
+ASSET_SELECTOR_TOP_N: int = 25        # keep top-N from the scored universe

@@ -9,10 +9,11 @@ Phase 7 Update:
 
 from __future__ import annotations
 
+from math import floor
 from typing import Optional
 
 from app.core.state import AppState
-from app.core.models import EntrySignal
+from app.core.models import EntrySignal, ValidationResult
 from app.datasource.market_data_service import BaseMarketDataService
 from app.datasource.account_service import BaseAccountService
 from app.calculator.calculator_engine import CalculatorEngine
@@ -22,11 +23,14 @@ from app.validator.signal_validator import SignalValidator
 from app.executor.trade_executor import TradeExecutor
 from app.loops.base_loop import BaseLoop
 from app.utils.logger import logger
+from app.utils.safe_number import safe_float
 from app.utils.time_utils import utc_now
+from app.core.dynamic_risk import dynamic_trade_budget
 from config.settings import (
     ENTRY_INTERVAL_SECONDS, 
     MAX_DOLLAR_PER_TRADE, 
-    STOCK_CLOSE_BUFFER_MINUTES
+    STOCK_CLOSE_BUFFER_MINUTES,
+    ALLOW_FRACTIONAL_STOCK_QTY,
 )
 from config.prompts import ENTRY_SYSTEM_PROMPT
 
@@ -98,6 +102,30 @@ class EntryOpportunityLoop(BaseLoop):
             analysis = self._calculator.run_entry_analysis(market_data, account_snapshot)
             if not analysis: return
 
+            liquidity = analysis.get("liquidity") or {}
+            if liquidity.get("is_liquid") is False:
+                reason = str(liquidity.get("reason") or "Liquidity gate failed")
+                if self._is_hard_liquidity_rejection(reason):
+                    logger.info(
+                        "[EntryOpportunityLoop] Skipping {} before LLM: {}",
+                        symbol,
+                        reason,
+                    )
+                    self._record_deterministic_skip(
+                        symbol,
+                        reason_code="LIQUIDITY_GATE_SKIP",
+                        reason=reason,
+                    )
+                    return
+                logger.warning(
+                    "[EntryOpportunityLoop] Soft liquidity warning for {}: {}. Proceeding to LLM with caution.",
+                    symbol,
+                    reason,
+                )
+                liquidity["is_liquid"] = True
+                liquidity["soft_warning"] = reason
+                analysis["liquidity"] = liquidity
+
             # Check for Analysis Throttling (Cost Efficiency)
             latest_price = market_data.get("latest_price", 0)
             if not self.app_state.should_analyze(symbol, latest_price):
@@ -130,29 +158,33 @@ class EntryOpportunityLoop(BaseLoop):
 
             # 4. Risk Management: Capital Sizing (Support Fractional)
             # Use entry_price from analysis or latest_price from market_data
-            calc_price = analysis.get("entry_price") or market_data.get("latest_price", 0)
+            calc_price = safe_float(analysis.get("entry_price") or market_data.get("latest_price", 0), 0.0)
             
-            if calc_price > 0:
-                # For Crypto, we use 4 decimal places. For Stocks, Alpaca usually wants integers (or limited fractions).
-                is_crypto = "/" in symbol
-                raw_qty = MAX_DOLLAR_PER_TRADE / calc_price
-                
-                if is_crypto:
-                    calculated_qty = round(raw_qty, 4)
-                else:
-                    calculated_qty = int(raw_qty) # Stocks default to whole shares for safety
+            if calc_price and calc_price > 0:
+                calculated_qty = self._calculate_qty_cap(symbol, calc_price, analysis, account_snapshot)
                 
                 if calculated_qty <= 0:
                     logger.warning("[EntryOpportunityLoop] Calculated qty for {} is 0 (Price={}). Skipping.", symbol, calc_price)
                     return
                 
-                if abs(signal.qty - calculated_qty) > 0.00001:
-                    logger.info("[EntryOpportunityLoop] Overriding LLM qty ({}) with Risk-Managed qty ({}) for {}.", signal.qty, calculated_qty, symbol)
-                    signal.qty = calculated_qty
+                approved_qty = min(signal.qty, calculated_qty)
+                approved_qty = self._format_qty(symbol, approved_qty)
+                if approved_qty <= 0:
+                    logger.warning("[EntryOpportunityLoop] LLM qty for {} becomes 0 after lot-size/risk cap. Skipping.", symbol)
+                    return
+
+                if abs(signal.qty - approved_qty) > 0.00001:
+                    logger.info("[EntryOpportunityLoop] Capping LLM qty ({}) to Risk-Managed qty ({}) for {}.", signal.qty, approved_qty, symbol)
+                    signal.qty = approved_qty
 
             # 5. Validation (Phase 6)
             if not self._validator: return
-            validation = self._validator.validate_entry(signal)
+            validation = self._validator.validate_entry(
+                signal,
+                account_data=account_snapshot,
+                expected_symbol=symbol,
+                entry_price=calc_price,
+            )
             
             # Log signal decision to CSV
             if self._executor and self._executor.storage:
@@ -168,9 +200,60 @@ class EntryOpportunityLoop(BaseLoop):
             if signal.action != "SKIP" and validation.validated:
                 if self._executor:
                     logger.info("[EntryOpportunityLoop] EXECUTING trade for {}...", symbol)
-                    self._executor.execute_entry(signal)
+                    result = self._executor.execute_entry(signal)
+                    if result.status == "submitted":
+                        self.app_state.add_open_order(result.alpaca_order_id, result.symbol)
                 else:
                     logger.warning("[EntryOpportunityLoop] No executor. Trade skipped.")
 
         except Exception as exc:  # noqa: BLE001
             logger.error("[EntryOpportunityLoop] Failed to process {}: {}", symbol, exc)
+
+    def _record_deterministic_skip(self, symbol: str, reason_code: str, reason: str) -> None:
+        if not self._executor or not self._executor.storage:
+            return
+        signal = EntrySignal(
+            sym=symbol,
+            action="SKIP",
+            conf=0.0,
+            qty=0.0,
+            target=None,
+            stop=None,
+            reason_code=reason_code,
+        )
+        self._executor.storage.record_signal(
+            timestamp=str(utc_now()),
+            flow="ENTRY",
+            symbol=symbol,
+            signal=signal,
+            validation=ValidationResult(validated=False, reason=reason),
+        )
+
+    def _calculate_qty_cap(self, symbol: str, price: float, analysis: dict, account_snapshot: dict | None) -> float:
+        trade_budget = dynamic_trade_budget(account_snapshot)
+        if trade_budget <= 0:
+            trade_budget = MAX_DOLLAR_PER_TRADE
+        trade_cap = trade_budget / price if price > 0 else 0.0
+        sizing = analysis.get("sizing") or {}
+        risk_cap = safe_float(sizing.get("qty"))
+
+        cap = trade_cap
+        if risk_cap is not None:
+            cap = min(trade_cap, max(risk_cap, 0.0))
+
+        return self._format_qty(symbol, cap)
+
+    def _format_qty(self, symbol: str, qty: float) -> float:
+        if "/" in symbol:
+            return floor(qty * 10_000) / 10_000
+        if ALLOW_FRACTIONAL_STOCK_QTY:
+            return floor(qty * 10_000) / 10_000
+        return float(int(qty))
+
+    def _is_hard_liquidity_rejection(self, reason: str) -> bool:
+        text = str(reason).lower()
+        if "quote unavailable" in text or "quote_unavailable" in text:
+            return True
+        if "spread too wide" in text or "spread_too_wide" in text:
+            return True
+        return False

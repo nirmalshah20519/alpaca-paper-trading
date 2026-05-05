@@ -118,11 +118,19 @@ def main() -> None:
             
             logger.info("Syncing open orders with Alpaca API...")
             req = GetOrdersRequest(status=QueryOrderStatus.OPEN)
-            open_orders_list = services.gateway.trading_client.get_orders(filter=req)
-            storage_manager.sync_open_orders(open_orders_list)
+            open_orders_list = gateway.trading_client.get_orders(filter=req)
+            positions = services.account_service.get_positions()
+            storage_manager.sync_open_orders(
+                open_orders_list,
+                position_symbols=[str(pos.get("symbol", "")) for pos in positions],
+            )
             
             # Update AppState as well
-            app_state.set_open_orders([str(o.id) for o in open_orders_list])
+            app_state.set_positions(positions)
+            app_state.set_open_orders(
+                [str(o.id) for o in open_orders_list],
+                [str(o.symbol) for o in open_orders_list],
+            )
         except Exception as e:
             logger.warning("Initial open order sync failed: {}", e)
 

@@ -21,20 +21,21 @@ DEFAULT_CRYPTO_UNIVERSE: list[str] = [
 ]
 
 # Maximum symbols to keep in the active trading list
-MAX_ACTIVE_SYMBOLS: int = 20
-ASSET_SELECTOR_TOP_N: int = 20
+MAX_ACTIVE_SYMBOLS: int = 25
+ASSET_SELECTOR_TOP_N: int = 25
 
 # Risk Management
 MAX_DOLLAR_PER_TRADE: float = 200.0
 STOCK_CLOSE_BUFFER_MINUTES: int = 15
+ALLOW_FRACTIONAL_STOCK_QTY: bool = True
 
 # ---------------------------------------------------------------------------
 # Loop Intervals (seconds)
 # ---------------------------------------------------------------------------
 
 ASSET_REFRESH_INTERVAL_SECONDS: int = 3_600   # 1 hour
-ENTRY_INTERVAL_SECONDS: int = 30              # 30 seconds
-MONITOR_INTERVAL_SECONDS: int = 30             # 30 seconds
+ENTRY_INTERVAL_SECONDS: int = 120              # 2 minutes
+MONITOR_INTERVAL_SECONDS: int = 120             # 2 minutes
 RECONCILIATION_INTERVAL_SECONDS: int = 600      # 10 minutes
 HEARTBEAT_INTERVAL_SECONDS: int = 60            # 1 minute
 
@@ -63,8 +64,9 @@ LOG_LEVEL: str = "DEBUG"
 # Opportunity Score Weights (used by AssetSelector)
 # ---------------------------------------------------------------------------
 
-SCORE_WEIGHT_VOLUME: float = 0.30
+SCORE_WEIGHT_VOLUME: float = 0.20
 SCORE_WEIGHT_MOMENTUM: float = 0.25
 SCORE_WEIGHT_VOLATILITY_EXPANSION: float = 0.20
 SCORE_WEIGHT_DOLLAR_VOLUME: float = 0.15
 SCORE_WEIGHT_TREND_STRENGTH: float = 0.10
+SCORE_WEIGHT_AFFORDABILITY: float = 0.10

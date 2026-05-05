@@ -11,7 +11,6 @@ Design rules:
 
 from __future__ import annotations
 
-import json
 from typing import Type, TypeVar
 
 from openai import OpenAI
@@ -23,9 +22,16 @@ from tenacity import (
     retry_if_exception_type,
 )
 
+from app.core.models import ExitSignal
 from app.llm.ask_llm import BaseLLMProvider
+from app.llm.response_safety import parse_llm_response
 from app.utils.logger import logger
-from config.llm_config import LLM_MODEL, MAX_OUTPUT_TOKENS_ENTRY, TEMPERATURE
+from config.llm_config import (
+    LLM_MODEL,
+    MAX_OUTPUT_TOKENS_ENTRY,
+    MAX_OUTPUT_TOKENS_EXIT,
+    TEMPERATURE,
+)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -69,17 +75,16 @@ class OpenAIProvider(BaseLLMProvider):
                     {"role": "user", "content": prompt},
                 ],
                 response_format={"type": "json_object"},
-                max_tokens=MAX_OUTPUT_TOKENS_ENTRY,
+                max_tokens=(
+                    MAX_OUTPUT_TOKENS_EXIT
+                    if response_model is ExitSignal
+                    else MAX_OUTPUT_TOKENS_ENTRY
+                ),
                 temperature=TEMPERATURE,
             )
 
             raw_content = response.choices[0].message.content
-            if not raw_content:
-                raise ValueError("OpenAI returned an empty response.")
-
-            # Parse JSON and validate with Pydantic
-            data = json.loads(raw_content)
-            return response_model.model_validate(data)
+            return parse_llm_response(raw_content, response_model, prompt, "OpenAI")
 
         except Exception as exc:
             logger.error("OpenAI request failed: {}", exc)

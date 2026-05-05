@@ -63,20 +63,23 @@ class AlpacaOrderSubmitter:
             logger.error("Alpaca order submission failed for {}: {}", signal.sym, exc)
             raise
 
-    def submit_exit(self, symbol: str, qty: float) -> Any:
+    def submit_exit(self, symbol: str, qty: float, side: str = "SELL") -> Any:
         """
-        Submit a Market Sell order to close a position.
+        Submit a market order to close a position.
+
+        Long exits sell; short exits buy to cover.
         """
         try:
             normalized_symbol = self._normalize_symbol(symbol)
+            order_side = self._order_side(side)
             tif = self._time_in_force(normalized_symbol)
             order_req = MarketOrderRequest(
                 symbol=normalized_symbol,
-                qty=float(qty),
-                side=OrderSide.SELL,
+                qty=abs(float(qty)),
+                side=order_side,
                 time_in_force=tif
             )
-            logger.info("Submitting EXIT order for {} qty={} tif={}", normalized_symbol, qty, tif)
+            logger.info("Submitting EXIT {} order for {} qty={} tif={}", order_side, normalized_symbol, qty, tif)
             order = self.client.submit_order(order_data=order_req)
             logger.info("Exit order submitted. ID: {}", order.id)
             return order
@@ -117,6 +120,14 @@ class AlpacaOrderSubmitter:
         if base in self.CRYPTO_BASES:
             return f"{base}/{quote}"
         return symbol
+
+    def _order_side(self, side: str) -> OrderSide:
+        side_value = str(side).upper()
+        if side_value == "BUY":
+            return OrderSide.BUY
+        if side_value == "SELL":
+            return OrderSide.SELL
+        raise ValueError(f"Unsupported order side: {side}")
 
     def _time_in_force(self, symbol: str) -> TimeInForce:
         """

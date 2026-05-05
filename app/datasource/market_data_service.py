@@ -79,10 +79,10 @@ class AlpacaMarketDataService(BaseMarketDataService):
             
             # alpaca-py responses typically have a .data attribute mapping symbol to trade
             data = res.data if hasattr(res, "data") else res
-            trade = data.get(symbol) if isinstance(data, dict) else data
+            trade = self._symbol_payload(data, symbol)
             
-            if trade and hasattr(trade, "price"):
-                return safe_float(trade.price)
+            if trade:
+                return safe_float(self._field(trade, "price"))
             return None
         except Exception as exc:
             logger.warning("get_latest_price failed for {}: {}", symbol, exc)
@@ -98,11 +98,12 @@ class AlpacaMarketDataService(BaseMarketDataService):
                 req = StockLatestQuoteRequest(symbol_or_symbols=symbol)
                 res = self._stock_client.get_stock_latest_quote(req)
             
-            quote = res.get(symbol) if isinstance(res, dict) else res
+            data = res.data if hasattr(res, "data") else res
+            quote = self._symbol_payload(data, symbol)
             if not quote: return {}
             
-            bid = safe_float(quote.bid_price) or 0.0
-            ask = safe_float(quote.ask_price) or 0.0
+            bid = safe_float(self._field(quote, "bid_price")) or 0.0
+            ask = safe_float(self._field(quote, "ask_price")) or 0.0
             spread = max(ask - bid, 0.0)
             return {"bid": bid, "ask": ask, "spread": spread, "spread_pct": (spread / ask) if ask > 0 else 0.0}
         except Exception as exc:
@@ -146,3 +147,20 @@ class AlpacaMarketDataService(BaseMarketDataService):
 
     def _parse_timeframe(self, tf_str: str) -> TimeFrame:
         return {"1Min": TimeFrame.Minute, "5Min": TimeFrame(5, "Minute"), "1Hour": TimeFrame.Hour, "1Day": TimeFrame.Day}.get(tf_str, TimeFrame.Minute)
+
+    def _symbol_payload(self, data: object, symbol: str):
+        if not isinstance(data, dict):
+            return data
+        if symbol in data:
+            return data[symbol]
+
+        wanted = symbol.upper().replace("/", "")
+        for key, value in data.items():
+            if str(key).upper().replace("/", "") == wanted:
+                return value
+        return None
+
+    def _field(self, payload: object, name: str):
+        if isinstance(payload, dict):
+            return payload.get(name)
+        return getattr(payload, name, None)
